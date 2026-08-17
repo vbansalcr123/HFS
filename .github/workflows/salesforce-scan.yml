@@ -1,0 +1,60 @@
+name: Salesforce Code Analyzer Scan
+
+on:
+  pull_request:
+    branches: [ main, develop, 'release/**' ] # Triggers on PRs targeting main, develop, or any release branch
+
+permissions:
+  contents: read
+
+jobs:
+  salesforce-code-analyzer:
+    name: Run Quality & Security Scans
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the source code being updated in the PR
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Step 2: Setup Node.js Environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Step 3: Install Salesforce CLI and Scanner Plugin
+      - name: Install Salesforce CLI & Code Analyzer
+        run: |
+          npm install -g @salesforce/cli
+          sf plugins install @salesforce/sfdx-scanner
+
+      # Step 4: Run the Official Salesforce Code Analyzer
+      - name: Run Salesforce Code Analyzer
+        id: run-code-analyzer
+        uses: forcedotcom/run-code-analyzer@v2
+        with:
+          # Targets your main source directory
+          run-arguments: '--target force-app --view detail --output-file sfca_results.json'
+
+      # Step 5: Block the PR if severe violations are found in files the PR changed
+      - name: Check for Severe Violations
+        env:
+          RAW_TOTAL: ${{ steps.run-code-analyzer.outputs.num-violations-in-changed-files }}
+          RAW_SEV1: ${{ steps.run-code-analyzer.outputs.num-sev1-violations-in-changed-files }}
+        run: |
+          # Use parameter expansion to default to 0 if the action outputs are blank
+          TOTAL_VIOLATIONS=${RAW_TOTAL:-0}
+          SEV1_VIOLATIONS=${RAW_SEV1:-0}
+
+          echo "Total violations in changed files: $TOTAL_VIOLATIONS"
+          echo "Severity 1 (Critical Security/ESLint) violations in changed files: $SEV1_VIOLATIONS"
+
+          # Fail the build if any Critical Severity 1 issues exist in files this PR touched
+          if [ "$SEV1_VIOLATIONS" -gt 0 ]; then
+            echo "❌ Scan failed due to critical security or ESLint rule violations."
+            exit 1
+          fi
+          echo "✅ Code quality and security checks passed successfully!"
