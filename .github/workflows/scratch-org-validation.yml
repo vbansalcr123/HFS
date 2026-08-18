@@ -54,12 +54,29 @@ jobs:
           DEVHUB_USERNAME: ${{ secrets.DEVHUB_USERNAME }}
         run: |
           echo "$DEVHUB_JWT_KEY" > server.key
+
+          # ---- Debug: sanity-check the secrets without ever printing the raw key/full consumer key ----
+          # (GitHub masks known secret values in logs, but multi-line secrets like a PEM key have a
+          # documented masking weakness, so we deliberately never echo DEVHUB_JWT_KEY/DEVHUB_CONSUMER_KEY
+          # in full — only enough to confirm they look like what we expect.)
+          echo "DEBUG: DEVHUB_USERNAME = $DEVHUB_USERNAME"
+          echo "DEBUG: DEVHUB_CONSUMER_KEY (masked) = ${DEVHUB_CONSUMER_KEY:0:6}...${DEVHUB_CONSUMER_KEY: -4} (length ${#DEVHUB_CONSUMER_KEY})"
+          echo "DEBUG: server.key line count = $(wc -l < server.key)"
+          echo "DEBUG: server.key has PEM header = $(grep -c '\-----BEGIN' server.key)"
+          echo "DEBUG: server.key has PEM footer = $(grep -c '\-----END' server.key)"
+
           sf org login jwt \
             --client-id "$DEVHUB_CONSUMER_KEY" \
             --jwt-key-file server.key \
             --username "$DEVHUB_USERNAME" \
             --set-default-dev-hub \
             --alias devhub
+
+          echo "DEBUG: post-login org info:"
+          sf org display --target-org devhub --verbose
+          echo "DEBUG: full org list after login:"
+          sf org list
+
           # Remove the private key from disk as soon as it's no longer needed, minimizing its exposure
           # window on the runner (the runner VM itself is destroyed after the job either way).
           rm server.key
@@ -75,6 +92,12 @@ jobs:
           SF_SCRATCH_SIGNUP_CONNECTED_APP: PlatformCLI
           SF_SCRATCH_SIGNUP_CALLBACK_URL: http://localhost:1717/OauthRedirect
         run: |
+          # ---- Debug: confirm the signup workaround env vars and current Dev Hub state before creating ----
+          echo "DEBUG: SF_SCRATCH_SIGNUP_CONNECTED_APP = $SF_SCRATCH_SIGNUP_CONNECTED_APP"
+          echo "DEBUG: SF_SCRATCH_SIGNUP_CALLBACK_URL = $SF_SCRATCH_SIGNUP_CALLBACK_URL"
+          echo "DEBUG: org list right before create scratch:"
+          sf org list
+
           # Alias includes both the PR number (for human traceability in `sf org list`) and the run ID
           # (for uniqueness across re-runs/re-pushes of the same PR).
           SCRATCH_ALIAS="pr-${{ github.event.pull_request.number }}-${{ github.run_id }}"
