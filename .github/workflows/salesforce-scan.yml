@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   salesforce-code-analyzer:
@@ -40,23 +41,38 @@ jobs:
         with:
           # Targets your main source directory
           run-arguments: '--target force-app --view detail --output-file sfca_results.json'
+          # Required to compute the *-in-changed-files outputs and post a PR review
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 5: Block the PR if severe violations are found in files the PR changed
-      - name: Check for Severe Violations
+      # Step 5: Block the PR if any violations are found in files the PR changed
+      - name: Check for Violations
         env:
           RAW_TOTAL: ${{ steps.run-code-analyzer.outputs.num-violations-in-changed-files }}
           RAW_SEV1: ${{ steps.run-code-analyzer.outputs.num-sev1-violations-in-changed-files }}
+          RAW_SEV2: ${{ steps.run-code-analyzer.outputs.num-sev2-violations-in-changed-files }}
+          RAW_SEV3: ${{ steps.run-code-analyzer.outputs.num-sev3-violations-in-changed-files }}
+          RAW_SEV4: ${{ steps.run-code-analyzer.outputs.num-sev4-violations-in-changed-files }}
+          RAW_SEV5: ${{ steps.run-code-analyzer.outputs.num-sev5-violations-in-changed-files }}
         run: |
           # Use parameter expansion to default to 0 if the action outputs are blank
           TOTAL_VIOLATIONS=${RAW_TOTAL:-0}
           SEV1_VIOLATIONS=${RAW_SEV1:-0}
+          SEV2_VIOLATIONS=${RAW_SEV2:-0}
+          SEV3_VIOLATIONS=${RAW_SEV3:-0}
+          SEV4_VIOLATIONS=${RAW_SEV4:-0}
+          SEV5_VIOLATIONS=${RAW_SEV5:-0}
 
-          echo "Total violations in changed files: $TOTAL_VIOLATIONS"
-          echo "Severity 1 (Critical Security/ESLint) violations in changed files: $SEV1_VIOLATIONS"
+          echo "Violations in changed files, by severity:"
+          echo "  1 (Critical): $SEV1_VIOLATIONS"
+          echo "  2 (High):     $SEV2_VIOLATIONS"
+          echo "  3 (Moderate): $SEV3_VIOLATIONS"
+          echo "  4 (Low):      $SEV4_VIOLATIONS"
+          echo "  5 (Info):     $SEV5_VIOLATIONS"
+          echo "  Total:        $TOTAL_VIOLATIONS"
 
-          # Fail the build if any Critical Severity 1 issues exist in files this PR touched
-          if [ "$SEV1_VIOLATIONS" -gt 0 ]; then
-            echo "❌ Scan failed due to critical security or ESLint rule violations."
+          # Fail the build if any violation of any severity exists in files this PR touched
+          if [ "$TOTAL_VIOLATIONS" -gt 0 ]; then
+            echo "❌ Scan failed: $TOTAL_VIOLATIONS violation(s) found in changed files."
             exit 1
           fi
           echo "✅ Code quality and security checks passed successfully!"
