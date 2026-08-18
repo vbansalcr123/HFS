@@ -65,8 +65,15 @@ jobs:
           rm server.key
 
       # Step 5: Create a fresh, empty scratch org for this PR.
+      # Our Dev Hub is authenticated via an External Client App (ECA), which the scratch-org signup
+      # service can't replicate into the newly created scratch org (fails with C-1016 /
+      # RemoteOrgSignupFailed). Point signup at Salesforce's built-in PlatformCLI app instead, just
+      # for this step, as the documented workaround.
       - name: Create Scratch Org
         id: create-scratch
+        env:
+          SF_SCRATCH_SIGNUP_CONNECTED_APP: PlatformCLI
+          SF_SCRATCH_SIGNUP_CALLBACK_URL: http://localhost:1717/OauthRedirect
         run: |
           # Alias includes both the PR number (for human traceability in `sf org list`) and the run ID
           # (for uniqueness across re-runs/re-pushes of the same PR).
