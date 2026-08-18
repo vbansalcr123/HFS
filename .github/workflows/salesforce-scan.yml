@@ -23,13 +23,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 20 hits a crash in @salesforce/cli's bundled undici
+          # (calls worker_threads.markAsUncloneable, added only in Node >=22.10)
+          node-version: 22
 
-      # Step 3: Install Salesforce CLI and Scanner Plugin
+      # Step 3: Install Salesforce CLI and Code Analyzer Plugin
       - name: Install Salesforce CLI & Code Analyzer
         run: |
           npm install -g @salesforce/cli
-          sf plugins install @salesforce/sfdx-scanner
+          sf plugins install code-analyzer@latest
 
       # Step 4: Run the Official Salesforce Code Analyzer
       - name: Run Salesforce Code Analyzer
