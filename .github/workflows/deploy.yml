@@ -1,4 +1,4 @@
-name: Deploy to Environment (dev/qa/uat/prod)
+name: Deploy to Environment. (dev/qa/uat/prod)
 
 on:
   workflow_dispatch:
