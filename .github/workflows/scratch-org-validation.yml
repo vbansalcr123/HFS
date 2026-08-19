@@ -1,0 +1,277 @@
+name: Scratch Org Deploy & Test Validation
+
+on:
+  pull_request:
+    branches: [ main, develop, 'release/**' ] # Triggers on PRs targeting main, develop, or any release branch
+    # Default activity types (opened, synchronize, reopened, ...) apply, so every new commit
+    # pushed to an open PR re-triggers this workflow, not just the PR's initial creation.
+
+concurrency:
+  # One scratch org in flight per PR. When a new commit re-triggers this workflow, the previous
+  # still-running instance for the same PR is cancelled rather than left racing a second scratch org.
+  group: scratch-org-validation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  scratch-org-validation:
+    name: Deploy & Test on Scratch Org
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the PR's changes merged onto the target branch (not just the feature branch in isolation).
+      # refs/pull/<n>/merge is a commit GitHub computes and keeps up to date automatically for every
+      # open, cleanly-mergeable PR — we don't perform the merge ourselves, we just check out GitHub's
+      # existing result of it. If the PR has real conflicts, this ref won't exist and checkout fails,
+      # which is itself a useful signal (don't scratch-org-test something that isn't mergeable yet).
+      - name: Checkout PR Merge Commit
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+
+      # Step 2: Setup Node.js Environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Node 20 hits a crash in @salesforce/cli's bundled undici
+          # (calls worker_threads.markAsUncloneable, added only in Node >=22.10)
+          node-version: 22
+
+      # Step 3: Install Salesforce CLI
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      # --- Auth URL auth (attempted, then reverted) — commented out, not deleted. ---
+      # Reasoning we tried this: a plain `sf org login web` authenticates through Salesforce CLI's own
+      # built-in OAuth client instead of our custom External Client App (ECA), sidestepping the C-1016
+      # signup issue below entirely. In practice the refresh token kept coming back
+      # "RefreshTokenAuthError: expired access/refresh token" almost immediately after being generated,
+      # while JWT auth itself never once failed — only the downstream scratch-org-signup step did, and
+      # we already have a targeted fix for that (see the PlatformCLI workaround restored below). So we
+      # reverted to JWT + that workaround as the more reliable combination.
+      # SFDX_AUTH_URL, if revisited, is generated once via:
+      #   sf org login web --alias <alias>
+      #   sf org display --target-org <alias> --verbose --json   (copy the "sfdxAuthUrl" field)
+      #
+      # - name: Authenticate Dev Hub (Auth URL)
+      #   env:
+      #     SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+      #   run: |
+      #     echo "$SFDX_AUTH_URL" > authfile
+      #     echo "DEBUG: authfile length = $(wc -c < authfile) bytes"
+      #     sf org login sfdx-url \
+      #       --sfdx-url-file authfile \
+      #       --set-default-dev-hub \
+      #       --alias devhub
+      #     echo "DEBUG: post-login org info:"
+      #     sf org display --target-org devhub --verbose
+      #     echo "DEBUG: full org list after login:"
+      #     sf org list
+      #     rm authfile
+      # --- end Auth URL auth ---
+
+      # Step 4: Authenticate to the Dev Hub using the JWT bearer flow.
+      # DEVHUB_JWT_KEY holds the raw PEM private key (paired with the self-signed cert uploaded to the
+      # Connected App) — no interactive login/session involved, so this doesn't expire like an auth URL
+      # can (and did, when we tried that approach — see the commented-out block above). JWT auth itself
+      # was reliable every time we tested it; the only real problem was scratch-org signup (below).
+      #
+      # TODO: DEVHUB_USERNAME currently points at a personal user, not the dedicated
+      # cicd_scratcorg_validation_user integration user. The integration user kept failing with
+      # "External client app is not installed in this org" even after matching the personal user's
+      # profile (System Administrator) and license (Salesforce) exactly — likely because the ECA's
+      # "Admin approved users are pre-authorized" policy assignment (Manage Profiles/Permission Sets on
+      # the app itself) and/or a one-time interactive OAuth consent weren't equivalently set up for it.
+      # Revisit and switch back to the integration user for better long-term hygiene — CI shouldn't
+      # depend on a personal login that breaks if that person's password/access changes.
+      - name: Authenticate Dev Hub (JWT Bearer Flow)
+        env:
+          DEVHUB_JWT_KEY: ${{ secrets.DEVHUB_JWT_KEY }}
+          DEVHUB_CONSUMER_KEY: ${{ secrets.DEVHUB_CONSUMER_KEY }}
+          DEVHUB_USERNAME: ${{ secrets.DEVHUB_USERNAME }}
+        run: |
+          echo "$DEVHUB_JWT_KEY" > server.key
+
+          # ---- Debug: sanity-check the secrets without ever printing the raw key/full consumer key ----
+          echo "DEBUG: DEVHUB_USERNAME = $DEVHUB_USERNAME"
+          echo "DEBUG: DEVHUB_CONSUMER_KEY (masked) = ${DEVHUB_CONSUMER_KEY:0:6}...${DEVHUB_CONSUMER_KEY: -4} (length ${#DEVHUB_CONSUMER_KEY})"
+          echo "DEBUG: server.key line count = $(wc -l < server.key)"
+          echo "DEBUG: server.key has PEM header = $(grep -c '\-----BEGIN' server.key)"
+          echo "DEBUG: server.key has PEM footer = $(grep -c '\-----END' server.key)"
+
+          sf org login jwt \
+            --client-id "$DEVHUB_CONSUMER_KEY" \
+            --jwt-key-file server.key \
+            --username "$DEVHUB_USERNAME" \
+            --set-default-dev-hub \
+            --alias devhub
+
+          echo "DEBUG: post-login org info:"
+          sf org display --target-org devhub --verbose
+          echo "DEBUG: full org list after login:"
+          sf org list
+
+          # Remove the private key from disk as soon as it's no longer needed, minimizing its exposure
+          # window on the runner (the runner VM itself is destroyed after the job either way).
+          rm server.key
+
+      # Step 5: Create a fresh, empty scratch org for this PR.
+      # Our Dev Hub is authenticated via an External Client App (ECA), which the scratch-org signup
+      # service can't replicate into the newly created scratch org (fails with C-1016 /
+      # RemoteOrgSignupFailed). Point signup at Salesforce's built-in PlatformCLI app instead, just
+      # for this step, as the documented workaround.
+      - name: Create Scratch Org
+        id: create-scratch
+        env:
+          SF_SCRATCH_SIGNUP_CONNECTED_APP: PlatformCLI
+          SF_SCRATCH_SIGNUP_CALLBACK_URL: http://localhost:1717/OauthRedirect
+        run: |
+          echo "DEBUG: SF_SCRATCH_SIGNUP_CONNECTED_APP = $SF_SCRATCH_SIGNUP_CONNECTED_APP"
+          echo "DEBUG: SF_SCRATCH_SIGNUP_CALLBACK_URL = $SF_SCRATCH_SIGNUP_CALLBACK_URL"
+          echo "DEBUG: org list right before create scratch:"
+          sf org list
+
+          # Alias includes both the PR number (for human traceability in `sf org list`) and the run ID
+          # (for uniqueness across re-runs/re-pushes of the same PR).
+          SCRATCH_ALIAS="pr-${{ github.event.pull_request.number }}-${{ github.run_id }}"
+          # Recorded to $GITHUB_OUTPUT *before* the org actually gets created, so the alias is available
+          # to the cleanup step even if this run gets cancelled while "sf org create scratch" is executing
+          # (e.g. a follow-up commit cancelling this run via the concurrency group above).
+          echo "scratch-alias=$SCRATCH_ALIAS" >> "$GITHUB_OUTPUT"
+          sf org create scratch \
+            --target-dev-hub devhub \
+            --definition-file config/project-scratch-def.json \
+            --alias "$SCRATCH_ALIAS" \
+            --duration-days 1 \
+            --wait 10 \
+            --set-default
+          # --duration-days 1 (the shortest allowed) is a self-cleanup safety net: even in the rare
+          # case where the "Delete Scratch Org" step never runs, this org auto-expires within a day
+          # instead of sitting around consuming Dev Hub scratch-org quota indefinitely.
+
+      # Step 6: Deploy the merged source to the scratch org
+      - name: Deploy Source to Scratch Org
+        run: |
+          sf project deploy start \
+            --source-dir force-app \
+            --target-org "${{ steps.create-scratch.outputs.scratch-alias }}" \
+            --wait 30
+
+      # Step 7: Run local Apex tests with code coverage, capturing JSON results for gate checks.
+      # continue-on-error: true is required here — "sf apex run test" exits non-zero on any test
+      # failure, but the job must still proceed to the "Enforce Test Pass & Coverage Gates" step
+      # (which does the real pass/fail parsing and writes the PR-visible summary) and to the
+      # "Delete Scratch Org" cleanup step afterward, rather than dying on this step's exit code.
+      - name: Run Apex Tests (RunLocalTests)
+        id: run-tests
+        continue-on-error: true
+        run: |
+          mkdir -p test-results
+          sf apex run test \
+            --target-org "${{ steps.create-scratch.outputs.scratch-alias }}" \
+            --test-level RunLocalTests \
+            --code-coverage \
+            --result-format json \
+            --output-dir test-results \
+            --wait 30 \
+            --synchronous \
+            > test-results/run-test-stdout.json
+
+      # Step 8: Fail the PR if any test failed, or if any individual class is under 75% coverage
+      # (a per-class minimum — stricter than Salesforce's own 75% org-wide deploy check).
+      # Field names below (result.summary.*, result.coverage.coverage[].coveredPercent) match the
+      # current "sf apex run test --result-format json" schema; this has drifted slightly across
+      # CLI versions historically, so re-verify with one manual run if this step ever misbehaves.
+      - name: Enforce Test Pass & Coverage Gates
+        id: enforce-gates
+        run: |
+          RESULTS_FILE="test-results/run-test-stdout.json"
+
+          if [ ! -s "$RESULTS_FILE" ]; then
+            echo "::error::Test results file missing or empty — sf apex run test likely crashed before producing output."
+            echo "## ❌ Apex Test Run Failed to Produce Results" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          OUTCOME=$(jq -r '.result.summary.outcome' "$RESULTS_FILE")
+          TESTS_RAN=$(jq -r '.result.summary.testsRan' "$RESULTS_FILE")
+          PASSING=$(jq -r '.result.summary.passing' "$RESULTS_FILE")
+          FAILING=$(jq -r '.result.summary.failing' "$RESULTS_FILE")
+          ORG_WIDE_COVERAGE=$(jq -r '.result.summary.orgWideCoverage // "n/a"' "$RESULTS_FILE")
+
+          # ---- Gate 1: any failing test ----
+          FAILED_TESTS_MD=$(jq -r '
+            [.result.tests[]? | select(.Outcome == "Fail")]
+            | if length == 0 then "" else
+                (["| Test | Message |", "|------|---------|"] +
+                 (map("| " + .FullName + " | " + ((.Message // "") | gsub("\\|"; "\\|") | gsub("\n"; " ")) + " |")))
+                | join("\n")
+              end
+          ' "$RESULTS_FILE")
+
+          # ---- Gate 2: any class under 75% coverage ----
+          UNDER_COVERED_MD=$(jq -r '
+            [.result.coverage.coverage[]?
+              | select(.coveredPercent < 75)
+              | {name, coveredPercent, totalLines, totalCovered}]
+            | if length == 0 then "" else
+                (["| Class | Coverage | Covered/Total Lines |", "|-------|----------|---------------------|"] +
+                 (map("| " + .name + " | " + (.coveredPercent | tostring) + "% | "
+                      + (.totalCovered | tostring) + "/" + (.totalLines | tostring) + " |")))
+                | join("\n")
+              end
+          ' "$RESULTS_FILE")
+
+          UNDER_COVERED_COUNT=$(jq '[.result.coverage.coverage[]? | select(.coveredPercent < 75)] | length' "$RESULTS_FILE")
+
+          # ---- Write step summary (always, pass or fail) ----
+          {
+            echo "## Apex Test Results"
+            echo ""
+            echo "- Outcome: **$OUTCOME**"
+            echo "- Tests ran: $TESTS_RAN (passing: $PASSING, failing: $FAILING)"
+            echo "- Org-wide coverage: $ORG_WIDE_COVERAGE"
+            echo ""
+            if [ -n "$FAILED_TESTS_MD" ]; then
+              echo "### ❌ Failing Tests"
+              echo "$FAILED_TESTS_MD"
+              echo ""
+            fi
+            if [ -n "$UNDER_COVERED_MD" ]; then
+              echo "### ⚠️ Classes Below 75% Coverage"
+              echo "$UNDER_COVERED_MD"
+              echo ""
+            fi
+            if [ -z "$FAILED_TESTS_MD" ] && [ -z "$UNDER_COVERED_MD" ]; then
+              echo "✅ All tests passed and every class meets the 75% per-class coverage minimum."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # ---- Final gate decision ----
+          # Computed and exited on last, after the step summary above is already written — a step's
+          # later commands still run right up until "exit" is called, so ordering the summary write
+          # before this ensures the markdown tables render in the Actions UI even when we then fail.
+          EXIT_CODE=0
+          if [ "$FAILING" -gt 0 ]; then
+            echo "::error::$FAILING Apex test(s) failed."
+            EXIT_CODE=1
+          fi
+          if [ "$UNDER_COVERED_COUNT" -gt 0 ]; then
+            echo "::error::$UNDER_COVERED_COUNT class(es) below 75% coverage."
+            EXIT_CODE=1
+          fi
+          exit $EXIT_CODE
+
+      # Step 9: Always delete the scratch org, regardless of pass/fail, so it doesn't burn Dev Hub quota.
+      # Guard on the output (set before "sf org create scratch" runs) rather than the step's outcome,
+      # so cleanup still fires if this run was cancelled/abandoned mid-creation (e.g. a newer commit's
+      # run cancelling this one via the concurrency group above) instead of only on a clean success.
+      - name: Delete Scratch Org
+        if: always() && steps.create-scratch.outputs.scratch-alias != ''
+        run: |
+          sf org delete scratch \
+            --target-org "${{ steps.create-scratch.outputs.scratch-alias }}" \
+            --no-prompt

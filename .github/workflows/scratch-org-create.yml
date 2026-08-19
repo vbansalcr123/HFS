@@ -1,0 +1,196 @@
+name: Scratch Org Create (Developer Sandbox)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch whose metadata to deploy'
+        required: true
+        default: 'develop'
+      email:
+        description: 'Your email address (org login details will be sent here)'
+        required: true
+
+concurrency:
+  # One create-run in flight per (branch, email) pair, so double-clicking "Run workflow" for the
+  # same request doesn't spin up two separate 30-day scratch orgs.
+  group: scratch-org-create-${{ inputs.branch }}-${{ inputs.email }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  scratch-org-create:
+    name: Create Long-Lived Scratch Org for Developer
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 0: Fail fast on obviously bad inputs, before spending any Dev Hub auth or scratch-org
+      # quota on a request that can't succeed anyway.
+      - name: Validate Inputs
+        run: |
+          BRANCH="${{ inputs.branch }}"
+          EMAIL="${{ inputs.email }}"
+
+          if [ -z "$BRANCH" ]; then
+            echo "::error::branch input is empty."
+            exit 1
+          fi
+
+          if ! [[ "$EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+            echo "::error::email input '$EMAIL' doesn't look like a valid email address."
+            exit 1
+          fi
+
+      # Step 1: Check out the requested branch directly. Unlike scratch-org-validation.yml, there's
+      # no PR here — the developer picked this branch by hand, so we check it out as-is. If the
+      # branch doesn't exist, checkout fails with a clear git error.
+      - name: Checkout Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+
+      # Step 2: Setup Node.js Environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Node 20 hits a crash in @salesforce/cli's bundled undici
+          # (calls worker_threads.markAsUncloneable, added only in Node >=22.10)
+          node-version: 22
+
+      # Step 3: Install Salesforce CLI
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      # Step 4: Authenticate to the Dev Hub using the JWT bearer flow.
+      # Same approach as scratch-org-validation.yml — see that file's inline comments for the full
+      # history of why (JWT over Auth URL, PlatformCLI signup workaround for the ECA-based Dev Hub).
+      - name: Authenticate Dev Hub (JWT Bearer Flow)
+        env:
+          DEVHUB_JWT_KEY: ${{ secrets.DEVHUB_JWT_KEY }}
+          DEVHUB_CONSUMER_KEY: ${{ secrets.DEVHUB_CONSUMER_KEY }}
+          DEVHUB_USERNAME: ${{ secrets.DEVHUB_USERNAME }}
+        run: |
+          echo "$DEVHUB_JWT_KEY" > server.key
+
+          sf org login jwt \
+            --client-id "$DEVHUB_CONSUMER_KEY" \
+            --jwt-key-file server.key \
+            --username "$DEVHUB_USERNAME" \
+            --set-default-dev-hub \
+            --alias devhub
+
+          # Remove the private key from disk as soon as it's no longer needed.
+          rm server.key
+
+      # Step 5: Create a scratch org for this developer to work in.
+      # Long-lived (30 days, the max allowed) and never auto-deleted by this workflow — unlike
+      # scratch-org-validation.yml's ephemeral, test-and-discard orgs, this one is meant to be
+      # actually developed in for the life of the story.
+      - name: Create Scratch Org
+        id: create-scratch
+        env:
+          # Our Dev Hub is authenticated via an External Client App (ECA), which the scratch-org
+          # signup service can't replicate into the newly created scratch org (fails with C-1016 /
+          # RemoteOrgSignupFailed). Point signup at Salesforce's built-in PlatformCLI app instead,
+          # just for this step, as the documented workaround.
+          SF_SCRATCH_SIGNUP_CONNECTED_APP: PlatformCLI
+          SF_SCRATCH_SIGNUP_CALLBACK_URL: http://localhost:1717/OauthRedirect
+        run: |
+          # Sanitize the branch name for use in an sf alias (aliases don't allow "/" or other
+          # punctuation branch names commonly contain), then truncate so alias + run-id suffix stays
+          # comfortably within CLI alias length limits.
+          SAFE_BRANCH=$(echo "${{ inputs.branch }}" | tr -c 'A-Za-z0-9' '-' | sed 's/-\+/-/g; s/^-//; s/-$//' | cut -c1-30)
+          SCRATCH_ALIAS="dev-${SAFE_BRANCH}-${{ github.run_id }}"
+          echo "scratch-alias=$SCRATCH_ALIAS" >> "$GITHUB_OUTPUT"
+
+          sf org create scratch \
+            --target-dev-hub devhub \
+            --definition-file config/project-scratch-def.json \
+            --alias "$SCRATCH_ALIAS" \
+            --duration-days 30 \
+            --wait 10 \
+            --set-default
+
+      # Step 6: Deploy the requested branch's source to the scratch org
+      - name: Deploy Source to Scratch Org
+        run: |
+          sf project deploy start \
+            --source-dir force-app \
+            --target-org "${{ steps.create-scratch.outputs.scratch-alias }}" \
+            --wait 30
+
+      # Step 7: Generate a password so the developer can log in directly, and read back the org's
+      # login URL/username. The password and access token are masked immediately, and the raw JSON
+      # blobs (which contain both) are never echoed to the job log — unlike the debug-heavy style
+      # used elsewhere in this repo's workflows, nothing secret is safe to print here.
+      - name: Generate Login Credentials
+        id: login-info
+        run: |
+          ALIAS="${{ steps.create-scratch.outputs.scratch-alias }}"
+
+          PW_JSON=$(sf org generate password --target-org "$ALIAS" --json)
+          GENERATED_PASSWORD=$(jq -r '.result.password' <<< "$PW_JSON")
+          echo "::add-mask::$GENERATED_PASSWORD"
+
+          DISPLAY_JSON=$(sf org display --target-org "$ALIAS" --verbose --json)
+          ACCESS_TOKEN=$(jq -r '.result.accessToken' <<< "$DISPLAY_JSON")
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          # A scratch org's instanceUrl is its My Domain host (My Domain has been on by default for
+          # new scratch orgs since Winter '18), so it's directly usable as a username/password login
+          # page — no URL construction needed.
+          LOGIN_URL=$(jq -r '.result.instanceUrl' <<< "$DISPLAY_JSON")
+          USERNAME=$(jq -r '.result.username' <<< "$DISPLAY_JSON")
+
+          echo "scratch-password=$GENERATED_PASSWORD" >> "$GITHUB_OUTPUT"
+          echo "scratch-login-url=$LOGIN_URL" >> "$GITHUB_OUTPUT"
+          echo "scratch-username=$USERNAME" >> "$GITHUB_OUTPUT"
+
+      # Step 8: Durable fallback — written before the email step so the org's details are visible
+      # in the run even if email delivery fails. Password is intentionally omitted here; it only
+      # ever appears in the email itself.
+      - name: Write Step Summary
+        if: always() && steps.create-scratch.outputs.scratch-alias != ''
+        run: |
+          {
+            echo "## Scratch Org Created"
+            echo ""
+            echo "- Alias: \`${{ steps.create-scratch.outputs.scratch-alias }}\`"
+            echo "- Branch deployed: \`${{ inputs.branch }}\`"
+            echo "- Username: \`${{ steps.login-info.outputs.scratch-username }}\`"
+            echo "- Login URL: ${{ steps.login-info.outputs.scratch-login-url }}"
+            echo "- Expires: 30 days from creation"
+            echo ""
+            echo "_Password was emailed to ${{ inputs.email }}; intentionally not shown here._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Step 9: Notify the developer by email. continue-on-error so an SMTP hiccup doesn't fail the
+      # whole run — the org was still created successfully, and the Step Summary above (step 8) is
+      # the fallback way to find it.
+      - name: Email Developer
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER_ADDRESS }}
+          server_port: ${{ secrets.SMTP_SERVER_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          to: ${{ inputs.email }}
+          from: ${{ secrets.SMTP_USERNAME }}
+          subject: "Your Salesforce scratch org (branch: ${{ inputs.branch }}) is ready"
+          body: |
+            Your scratch org has been created and deployed from branch '${{ inputs.branch }}'.
+
+            Alias: ${{ steps.create-scratch.outputs.scratch-alias }}
+            Login URL: ${{ steps.login-info.outputs.scratch-login-url }}
+            Username: ${{ steps.login-info.outputs.scratch-username }}
+            Password: ${{ steps.login-info.outputs.scratch-password }}
+
+            This org expires 30 days from creation.
+
+      # Note: deliberately no "Run Apex Tests" step and no "Delete Scratch Org" step here — this
+      # workflow hands the developer a working environment to develop in, it doesn't validate or
+      # discard one. See scratch-org-validation.yml for the PR-triggered ephemeral counterpart.
