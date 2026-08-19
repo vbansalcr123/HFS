@@ -12,3 +12,12 @@ package.xml
 **/__tests__/**
 
 node_modules/
+
+# Placeholder files keeping otherwise-empty scaffold folders tracked in git — not real metadata.
+# sfdx-git-delta infers a component's type/name purely from its path, isn't .gitkeep-aware, and
+# will misread e.g. permissionsets/.gitkeep as a PermissionSet named "default" (the folder above
+# it) or staticresources/.gitkeep as a StaticResource literally named ".gitkeep" — producing
+# package.xml entries deploy validation then rejects with "named in package.xml but not found in
+# zipped directory". See deploy.yml's "Compute Delta" step, which points sfdx-git-delta at this
+# file via --ignore.
+**/.gitkeep
