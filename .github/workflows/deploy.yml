@@ -155,10 +155,18 @@ jobs:
           echo "to=$TO" >> "$GITHUB_OUTPUT"
 
           mkdir -p .deploy-delta
+          # --ignore .forceignore is required: sfdx-git-delta infers a component's type/name purely
+          # from its file path and isn't .gitkeep-aware, so without this it misreads placeholder
+          # .gitkeep files in otherwise-empty scaffold folders as real metadata (e.g. a PermissionSet
+          # named "default", a StaticResource named ".gitkeep") — package.xml entries that don't
+          # correspond to anything real, which "sf project deploy validate" then rejects with
+          # "named in package.xml but not found in zipped directory". .forceignore already lists
+          # **/.gitkeep for exactly this reason.
           sf sgd:source:delta \
             --from "$FROM" \
             --to "$TO" \
             --source-dir force-app \
+            --ignore .forceignore \
             --output-dir .deploy-delta
 
           PACKAGE_XML=".deploy-delta/package/package.xml"
