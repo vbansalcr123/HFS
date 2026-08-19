@@ -291,6 +291,14 @@ jobs:
             fi
           fi
 
+          # --json mode makes the CLI suppress ALL human-readable console output, success or
+          # failure, and instead write one JSON blob to stdout (redirected below into the results
+          # file) — nothing is duplicated to stderr/console. Combined with bash's default -e, a
+          # non-zero exit here would silently abort the script with no visible diagnostic at all.
+          # set +e/-e around the call preserves the step's real outcome (still fails if this fails)
+          # while letting the script continue far enough to print the JSON either way — see the
+          # "exit $VALIDATE_EXIT_CODE" at the end of this step.
+          set +e
           sf project deploy validate \
             --manifest .deploy-delta/package/package.xml \
             --target-org target-org \
@@ -298,9 +306,17 @@ jobs:
             "${TEST_ARGS[@]}" \
             --wait 30 \
             --json > deploy-results/validate-result.json
+          VALIDATE_EXIT_CODE=$?
+          set -e
+
+          echo "--- sf project deploy validate exited $VALIDATE_EXIT_CODE ---"
+          cat deploy-results/validate-result.json
+          echo "-------------------------------------------------------------"
 
           JOB_ID=$(jq -r '.result.id // empty' deploy-results/validate-result.json)
           echo "job-id=$JOB_ID" >> "$GITHUB_OUTPUT"
+
+          exit $VALIDATE_EXIT_CODE
 
       # Step 9: Commit the already-validated deploy — only runs if validation above succeeded. This
       # redeems that validation's job id rather than re-submitting the manifest, which is what "quick
