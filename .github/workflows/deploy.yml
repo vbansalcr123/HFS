@@ -63,6 +63,25 @@ jobs:
       # for Dev Hub auth in scratch-org-validation.yml/scratch-org-create.yml, but pointed at this
       # environment's own org via the GitHub Environment's CONSUMER_KEY/JWT_KEY/USERNAME secrets
       # (same secret names, different values per environment) instead of a Dev Hub.
+      #
+      # --- Permissions the TARGET_USERNAME user needs in each org ---
+      # Required regardless of what's being deployed: API Enabled, Author Apex (to deploy Apex and
+      # run tests), Modify Metadata Through Metadata API Functions. Also needs to be pre-authorized
+      # for this org's Connected App (Admin approved users are pre-authorized + a permission set
+      # assignment, or a profile restriction on the app).
+      # Recommended: assign this user the System Administrator profile rather than hand-picking a
+      # narrow permission set. Metadata deploys are inherently broad (Apex, LWC, Flows, Permission
+      # Sets, custom objects, layouts, ...), and a scoped-down profile tends to break the pipeline
+      # the moment force-app gains a new metadata type, rather than acting as a real security
+      # boundary — the actual boundary here is the JWT cert/key and who can trigger this workflow.
+      # Object-level permissions specifically: as of this writing (AccountSelector.cls,
+      # AccountRatingService.cls) the only object touched is the standard Account object, both
+      # classes are "with sharing" but don't use WITH SECURITY_ENFORCED / stripInaccessible /
+      # WITH USER_MODE, and Apex runs in system mode by default — so this user's own object/field
+      # permissions aren't actually exercised by today's code. That changes the moment any class
+      # adds explicit CRUD/FLS enforcement or a test starts using System.runAs to impersonate a more
+      # restricted user — at that point, this user's Read/Create/Edit access on whatever objects
+      # that code touches starts to matter for whether deploys/tests pass.
       - name: Authenticate to Target Org (JWT Bearer Flow)
         env:
           TARGET_JWT_KEY: ${{ secrets.JWT_KEY }}
@@ -104,7 +123,7 @@ jobs:
       # with no special-casing needed anywhere else in this workflow.
       #
       # Destructive changes (deleted metadata) are intentionally NOT handled yet — see the commented-
-      # out block below and in the "Deploy Delta to Target Org" step. sfdx-git-delta would also emit
+      # out block below and in the "Validate Deploy (Dry Run)" step. sfdx-git-delta would also emit
       # .deploy-delta/destructiveChanges/destructiveChanges.xml for anything removed from force-app,
       # but until that's re-enabled, deletions in source won't be reflected in the target orgs.
       #
@@ -154,32 +173,141 @@ jobs:
             echo "No metadata has changed since the last successful deploy to **${{ inputs.environment }}** (\`${{ steps.delta.outputs.from }}\` → \`${{ steps.delta.outputs.to }}\`)."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Step 7: Deploy the delta package to the target org, running local Apex tests as part of the
-      # same deploy transaction — required by Salesforce for production deploys anyway, and it means
-      # a test failure or insufficient org-wide coverage rolls the *entire* deploy back atomically
-      # instead of leaving the org partially updated.
-      # continue-on-error lets the next step still parse and report on a failed deploy's JSON output.
+      # Step 7: Audit trail — list exactly what the delta step picked up, before the deploy attempt
+      # even runs. This is the answer to "what changed" for anyone reviewing a run afterward, and the
+      # first place to check if something that should have deployed didn't, or vice versa. Runs
+      # regardless of whether the deploy step that follows succeeds or fails.
+      #
+      # Parsing assumes package.xml is pretty-printed one-element-per-line, which is how
+      # sfdx-git-delta generates it — re-verify with one manual run if this step ever misbehaves.
+      - name: Write Delta Summary
+        if: steps.delta.outputs.has-changes == 'true'
+        run: |
+          PACKAGE_XML=".deploy-delta/package/package.xml"
+
+          COMPONENT_ROWS=$(awk '
+            /<types>/ { members = "" ; next }
+            /<members>/ {
+              gsub(/<members>|<\/members>/, "");
+              gsub(/^[ \t]+|[ \t]+$/, "");
+              members = members (members == "" ? "" : ", ") $0;
+              next
+            }
+            /<name>/ {
+              gsub(/<name>|<\/name>/, "");
+              gsub(/^[ \t]+|[ \t]+$/, "");
+              print "| " $0 " | " members " |"
+            }
+          ' "$PACKAGE_XML")
+
+          TOTAL_TYPES=$(grep -c "<name>" "$PACKAGE_XML" || echo 0)
+          TOTAL_MEMBERS=$(grep -c "<members>" "$PACKAGE_XML" || echo 0)
+
+          {
+            echo "## Delta Picked Up for ${{ inputs.environment }}"
+            echo ""
+            echo "Diffing \`${{ steps.delta.outputs.from }}\` → \`${{ steps.delta.outputs.to }}\`: $TOTAL_MEMBERS component(s) across $TOTAL_TYPES metadata type(s)."
+            echo ""
+            echo "| Metadata Type | Members |"
+            echo "|---------------|---------|"
+            echo "$COMPONENT_ROWS"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Step 8: Validate the delta against the target org — compiles everything in package.xml and
+      # runs the required Apex tests, but commits NOTHING. Whether this passes or fails, the org is
+      # untouched; it exists purely to answer "would this deploy succeed" before anything real
+      # happens, on top of the atomic rollback Salesforce deploys already guarantee. On success, the
+      # JSON result carries a job id (result.id) that the next step redeems via quick deploy.
+      # continue-on-error lets the coverage-gate step below still parse and report on a failed
+      # validation's JSON output.
       #
       # Destructive changes (deletions) are disabled for now — deleted metadata in force-app won't be
       # removed from the target org by this workflow. To re-enable: uncomment the HAS_DESTRUCTIVE /
-      # has-destructive lines in "Compute Delta" above, and the block below.
-      - name: Deploy Delta to Target Org
-        id: deploy
+      # has-destructive lines in "Compute Delta" above, and add the equivalent
+      # --post-destructive-changes flag to both this step and "Quick Deploy Validated Changes" below.
+      #
+      # --- Test scoping: dev/qa/uat are shared with other projects ---
+      # RunLocalTests runs every local (non-managed-package) Apex test in the org — not just tests
+      # related to this delta. In a shared org, that means an unrelated project's broken test can
+      # block this deploy, and the coverage-gate step below would report on classes this project
+      # never touched. Salesforce doesn't allow narrowing this for production (prod MUST use
+      # RunLocalTests or RunAllTestsInOrg — there's no way around that platform rule), but for
+      # dev/qa/uat we scope test execution to RunSpecifiedTests, running every @isTest class found
+      # anywhere under force-app — not just ones touched by this specific delta. Restricting to only
+      # delta-touched test files would silently skip regression coverage on unrelated code that
+      # depends on what changed (e.g. editing AccountRatingService.cls without touching
+      # AccountRatingServiceTest.cls) — this runs this project's whole local suite every time
+      # instead, which stays isolated from other projects sharing the org while still catching
+      # regressions test-level scoping to the delta alone would miss.
+      #
+      # Known coupling to watch for: the branch below keys off the literal string "prod", treating
+      # every other environment (dev/qa/uat) as shared/non-production. That's accurate for today's
+      # four environments, but it's an assumption baked into a string comparison, not something this
+      # workflow derives from the org itself — if dev/qa/uat ever stop being shared, or a future
+      # environment is added that's also production-tier (or also shared and needs the narrower
+      # scoping), this condition needs to be updated by hand to match. There's no dynamic way to ask
+      # an org "are you production and/or shared" from the CLI, so this has to be maintained here.
+      - name: Validate Deploy (Dry Run)
+        id: validate
         if: steps.delta.outputs.has-changes == 'true'
         continue-on-error: true
         run: |
           mkdir -p deploy-results
 
-          DEPLOY_ARGS=(--manifest .deploy-delta/package/package.xml --target-org target-org --test-level RunLocalTests --wait 30 --json)
-          # if [ "${{ steps.delta.outputs.has-destructive }}" = "true" ]; then
-          #   DEPLOY_ARGS+=(--post-destructive-changes .deploy-delta/destructiveChanges/destructiveChanges.xml)
-          # fi
+          # See "Known coupling to watch for" above — this is the literal-string check that decides
+          # RunLocalTests (mandatory, org-wide) vs. RunSpecifiedTests (scoped to this project only).
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            TEST_LEVEL="RunLocalTests"
+            TEST_ARGS=()
+          else
+            mapfile -t TEST_CLASSES < <(grep -rli "@isTest" force-app --include="*.cls" | xargs -n1 basename -s .cls | sort -u)
 
-          sf project deploy start "${DEPLOY_ARGS[@]}" > deploy-results/deploy-result.json
+            if [ "${#TEST_CLASSES[@]}" -eq 0 ]; then
+              echo "::warning::No @isTest classes found under force-app — falling back to NoTestRun for ${{ inputs.environment }}."
+              TEST_LEVEL="NoTestRun"
+              TEST_ARGS=()
+            else
+              TEST_LEVEL="RunSpecifiedTests"
+              TEST_ARGS=()
+              for CLASS in "${TEST_CLASSES[@]}"; do
+                TEST_ARGS+=(--tests "$CLASS")
+              done
+            fi
+          fi
 
-      # Step 8: Report on the deploy and enforce our stricter, per-class 75% coverage minimum on top
-      # of Salesforce's own org-wide check (same 75% bar used in scratch-org-validation.yml's PR
-      # gate). Note: by the time this step runs, a *successful* deploy has already landed in the
+          sf project deploy validate \
+            --manifest .deploy-delta/package/package.xml \
+            --target-org target-org \
+            --test-level "$TEST_LEVEL" \
+            "${TEST_ARGS[@]}" \
+            --wait 30 \
+            --json > deploy-results/validate-result.json
+
+          JOB_ID=$(jq -r '.result.id // empty' deploy-results/validate-result.json)
+          echo "job-id=$JOB_ID" >> "$GITHUB_OUTPUT"
+
+      # Step 9: Commit the already-validated deploy — only runs if validation above succeeded. This
+      # redeems that validation's job id rather than re-submitting the manifest, which is what "quick
+      # deploy" means: Salesforce commits the exact result it already compiled and tested, without
+      # running Apex tests a second time. Must happen within 10 days of a successful validation
+      # (never a concern within a single workflow run). continue-on-error so the gate step below can
+      # still report clearly if this specific step is what failed.
+      - name: Quick Deploy Validated Changes
+        id: deploy
+        if: steps.delta.outputs.has-changes == 'true' && steps.validate.outcome == 'success'
+        continue-on-error: true
+        run: |
+          sf project deploy quick \
+            --job-id "${{ steps.validate.outputs.job-id }}" \
+            --target-org target-org \
+            --wait 30 \
+            --json > deploy-results/quick-deploy-result.json
+
+      # Step 10: Report on both stages and enforce our stricter, per-class 75% coverage minimum on
+      # top of Salesforce's own org-wide check (same 75% bar used in scratch-org-validation.yml's PR
+      # gate). Test/coverage data always comes from the *validate* step's JSON, since that's where
+      # Apex tests actually ran — the quick-deploy step reuses those results rather than re-running
+      # tests. Note: by the time this step runs, a successful quick deploy has already landed in the
       # target org — Salesforce deploys are transactional, so failing this step for a per-class
       # shortfall marks the run red for visibility and blocks the tracking-tag update below, but it
       # can't itself undo metadata that already deployed cleanly.
@@ -188,21 +316,27 @@ jobs:
         if: steps.delta.outputs.has-changes == 'true'
         run: |
           # Field names below (result.status, result.success, result.details.runTestResult.*) match
-          # the metadata Deploy API's current shape as surfaced by "sf project deploy start --json";
+          # the metadata Deploy API's current shape as surfaced by "sf project deploy validate --json";
           # like the equivalent gate in scratch-org-validation.yml, re-verify with one manual run if
           # this step ever misbehaves.
-          RESULTS_FILE="deploy-results/deploy-result.json"
+          VALIDATE_RESULTS_FILE="deploy-results/validate-result.json"
+          QUICK_DEPLOY_RESULTS_FILE="deploy-results/quick-deploy-result.json"
 
-          if [ ! -s "$RESULTS_FILE" ]; then
-            echo "::error::Deploy results file missing or empty — sf project deploy start likely crashed before producing output."
-            echo "## ❌ Deploy Failed to Produce Results" >> "$GITHUB_STEP_SUMMARY"
+          if [ ! -s "$VALIDATE_RESULTS_FILE" ]; then
+            echo "::error::Validation results file missing or empty — sf project deploy validate likely crashed before producing output."
+            echo "## ❌ Validation Failed to Produce Results" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
-          STATUS=$(jq -r '.result.status // "unknown"' "$RESULTS_FILE")
-          SUCCESS=$(jq -r '.result.success // false' "$RESULTS_FILE")
-          NUM_TESTS_RUN=$(jq -r '.result.details.runTestResult.numTestsRun // 0' "$RESULTS_FILE")
-          NUM_FAILURES=$(jq -r '.result.details.runTestResult.numFailures // 0' "$RESULTS_FILE")
+          VALIDATE_STATUS=$(jq -r '.result.status // "unknown"' "$VALIDATE_RESULTS_FILE")
+          VALIDATE_SUCCESS=$(jq -r '.result.success // false' "$VALIDATE_RESULTS_FILE")
+          NUM_TESTS_RUN=$(jq -r '.result.details.runTestResult.numTestsRun // 0' "$VALIDATE_RESULTS_FILE")
+          NUM_FAILURES=$(jq -r '.result.details.runTestResult.numFailures // 0' "$VALIDATE_RESULTS_FILE")
+
+          QUICK_DEPLOY_SUCCESS="false"
+          if [ -s "$QUICK_DEPLOY_RESULTS_FILE" ]; then
+            QUICK_DEPLOY_SUCCESS=$(jq -r '.result.success // false' "$QUICK_DEPLOY_RESULTS_FILE")
+          fi
 
           FAILED_TESTS_MD=$(jq -r '
             [.result.details.runTestResult.failures[]?]
@@ -211,7 +345,7 @@ jobs:
                  (map("| " + (.name // "") + "." + (.methodName // "") + " | " + ((.message // "") | gsub("\\|"; "\\|") | gsub("\n"; " ")) + " |")))
                 | join("\n")
               end
-          ' "$RESULTS_FILE")
+          ' "$VALIDATE_RESULTS_FILE")
 
           UNDER_COVERED_MD=$(jq -r '
             [.result.details.runTestResult.codeCoverage[]?
@@ -224,19 +358,28 @@ jobs:
                       + ((.numLocations - .numLocationsNotCovered) | tostring) + "/" + (.numLocations | tostring) + " |")))
                 | join("\n")
               end
-          ' "$RESULTS_FILE")
+          ' "$VALIDATE_RESULTS_FILE")
 
           UNDER_COVERED_COUNT=$(jq '
             [.result.details.runTestResult.codeCoverage[]?
               | select(.numLocations > 0)
               | select((((.numLocations - .numLocationsNotCovered) / .numLocations) * 100) < 75)]
             | length
-          ' "$RESULTS_FILE")
+          ' "$VALIDATE_RESULTS_FILE")
 
           {
             echo "## Deploy Result — ${{ inputs.environment }}"
             echo ""
-            echo "- Deploy status: **$STATUS** (success: $SUCCESS)"
+            echo "- Validation status: **$VALIDATE_STATUS** (success: $VALIDATE_SUCCESS)"
+            if [ "$VALIDATE_SUCCESS" = "true" ]; then
+              if [ "$QUICK_DEPLOY_SUCCESS" = "true" ]; then
+                echo "- Quick deploy: ✅ committed"
+              else
+                echo "- Quick deploy: ❌ failed"
+              fi
+            else
+              echo "- Quick deploy: skipped (validation failed — nothing was committed to the org)"
+            fi
             echo "- Tests ran: $NUM_TESTS_RUN (failing: $NUM_FAILURES)"
             echo ""
             if [ -n "$FAILED_TESTS_MD" ]; then
@@ -249,23 +392,27 @@ jobs:
               echo "$UNDER_COVERED_MD"
               echo ""
             fi
-            if [ "$SUCCESS" = "true" ] && [ -z "$UNDER_COVERED_MD" ]; then
+            if [ "$VALIDATE_SUCCESS" = "true" ] && [ "$QUICK_DEPLOY_SUCCESS" = "true" ] && [ -z "$UNDER_COVERED_MD" ]; then
               echo "✅ Deploy succeeded, all tests passed, every touched class meets the 75% per-class coverage minimum."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
           EXIT_CODE=0
-          if [ "$SUCCESS" != "true" ]; then
-            echo "::error::Deploy to ${{ inputs.environment }} did not succeed (status: $STATUS)."
+          if [ "$VALIDATE_SUCCESS" != "true" ]; then
+            echo "::error::Validation of the deploy to ${{ inputs.environment }} did not succeed (status: $VALIDATE_STATUS)."
             EXIT_CODE=1
           fi
           if [ "$UNDER_COVERED_COUNT" -gt 0 ]; then
             echo "::error::$UNDER_COVERED_COUNT class(es) touched by this deploy are below 75% coverage."
             EXIT_CODE=1
           fi
+          if [ "$VALIDATE_SUCCESS" = "true" ] && [ "$QUICK_DEPLOY_SUCCESS" != "true" ]; then
+            echo "::error::Validation passed but the quick deploy to ${{ inputs.environment }} did not succeed."
+            EXIT_CODE=1
+          fi
           exit $EXIT_CODE
 
-      # Step 9: Only reached if the gate step above succeeded (a failed step stops the job by
+      # Step 11: Only reached if the gate step above succeeded (a failed step stops the job by
       # default). Move the tracking tag to the commit that was just deployed — this tag is the only
       # state the delta computation in Step 5 depends on for next time.
       - name: Record Successful Deploy
