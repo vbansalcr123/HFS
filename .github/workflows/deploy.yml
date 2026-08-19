@@ -140,7 +140,16 @@ jobs:
       - name: Compute Delta
         id: delta
         run: |
-          FROM=$(git rev-parse "refs/tags/deployed-${{ inputs.environment }}" 2>/dev/null || echo 4b825dc642cb6eb9a060e54bf8d69288fbee4904)
+          # --verify --quiet is required here, not just "git rev-parse <ref> 2>/dev/null || ...":
+          # for a ref that doesn't exist (the normal case on a first-ever deploy to an environment),
+          # plain "git rev-parse <ref>" still echoes the ref name itself to STDOUT as a last-resort
+          # "maybe this is a pathname" fallback, in addition to erroring and exiting non-zero.
+          # 2>/dev/null only silences stderr, so that stdout echo survives into the command
+          # substitution, and the "|| echo <empty-tree-sha>" fallback then adds a SECOND line on top
+          # of it — leaving FROM as both strings concatenated, which broke sfdx-git-delta with
+          # "--from is not a valid sha pointer". --verify --quiet skips that pathname fallback
+          # entirely and prints nothing to stdout on failure, so exactly one line ends up in FROM.
+          FROM=$(git rev-parse --verify --quiet "refs/tags/deployed-${{ inputs.environment }}" 2>/dev/null || echo 4b825dc642cb6eb9a060e54bf8d69288fbee4904)
           TO="${{ github.sha }}"
           echo "from=$FROM" >> "$GITHUB_OUTPUT"
           echo "to=$TO" >> "$GITHUB_OUTPUT"
