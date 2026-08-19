@@ -78,6 +78,15 @@ jobs:
       # Connected App) — no interactive login/session involved, so this doesn't expire like an auth URL
       # can (and did, when we tried that approach — see the commented-out block above). JWT auth itself
       # was reliable every time we tested it; the only real problem was scratch-org signup (below).
+      #
+      # TODO: DEVHUB_USERNAME currently points at a personal user, not the dedicated
+      # cicd_scratcorg_validation_user integration user. The integration user kept failing with
+      # "External client app is not installed in this org" even after matching the personal user's
+      # profile (System Administrator) and license (Salesforce) exactly — likely because the ECA's
+      # "Admin approved users are pre-authorized" policy assignment (Manage Profiles/Permission Sets on
+      # the app itself) and/or a one-time interactive OAuth consent weren't equivalently set up for it.
+      # Revisit and switch back to the integration user for better long-term hygiene — CI shouldn't
+      # depend on a personal login that breaks if that person's password/access changes.
       - name: Authenticate Dev Hub (JWT Bearer Flow)
         env:
           DEVHUB_JWT_KEY: ${{ secrets.DEVHUB_JWT_KEY }}
