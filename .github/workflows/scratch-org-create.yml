@@ -123,9 +123,15 @@ jobs:
             --wait 30
 
       # Step 7: Generate a password so the developer can log in directly, and read back the org's
-      # login URL/username. The password and access token are masked immediately, and the raw JSON
-      # blobs (which contain both) are never echoed to the job log — unlike the debug-heavy style
-      # used elsewhere in this repo's workflows, nothing secret is safe to print here.
+      # login URL/username. The raw JSON blobs (which contain both) are never echoed to the job log
+      # — unlike the debug-heavy style used elsewhere in this repo's workflows, nothing secret is
+      # safe to print here.
+      #
+      # TEMPORARY: GENERATED_PASSWORD is deliberately NOT masked right now (see the "Write Step
+      # Summary" step below) — GitHub's ::add-mask:: applies to job step summaries too, not just the
+      # log, so masking it here would also blank it out of the summary we're relying on as a
+      # fallback while email delivery is broken. ACCESS_TOKEN stays masked regardless — it's a live
+      # session credential, never meant to be displayed anywhere, unlike the password.
       - name: Generate Login Credentials
         id: login-info
         run: |
@@ -133,7 +139,6 @@ jobs:
 
           PW_JSON=$(sf org generate password --target-org "$ALIAS" --json)
           GENERATED_PASSWORD=$(jq -r '.result.password' <<< "$PW_JSON")
-          echo "::add-mask::$GENERATED_PASSWORD"
 
           DISPLAY_JSON=$(sf org display --target-org "$ALIAS" --verbose --json)
           ACCESS_TOKEN=$(jq -r '.result.accessToken' <<< "$DISPLAY_JSON")
@@ -154,12 +159,14 @@ jobs:
       #
       # TEMPORARY: the password is now printed here too (not just emailed) because email delivery
       # (Step 9, "Email Developer") is currently broken. Note this is a real exposure trade-off, not
-      # just a formatting choice: GitHub's ::add-mask:: (applied to GENERATED_PASSWORD in
-      # "Generate Login Credentials" above) only redacts step *logs* — it does NOT apply to
-      # $GITHUB_STEP_SUMMARY content, so the password below renders in plain text to anyone with
-      # read access to this repo's Actions runs, not just the requesting developer. Acceptable for
-      # now since these are 30-day throwaway scratch orgs, not production data. Revert to omitting it
-      # here once email delivery is fixed — see the Email Developer step, left intact below.
+      # just a formatting choice: GitHub's ::add-mask:: applies to job step summaries as well as raw
+      # logs — masking GENERATED_PASSWORD would have blanked it out of this summary too, which is
+      # exactly why "Generate Login Credentials" above deliberately stopped masking it. That means
+      # the password renders in plain text here to anyone with read access to this repo's Actions
+      # runs, not just the requesting developer. Acceptable for now since these are 30-day throwaway
+      # scratch orgs, not production data. Once email delivery is fixed: remove the password line
+      # below and re-add `echo "::add-mask::$GENERATED_PASSWORD"` in "Generate Login Credentials" —
+      # see the Email Developer step, left intact below.
       - name: Write Step Summary
         if: always() && steps.create-scratch.outputs.scratch-alias != ''
         run: |
