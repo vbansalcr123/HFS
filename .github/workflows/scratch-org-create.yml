@@ -29,10 +29,10 @@ jobs:
       # Step 0: Fail fast on obviously bad inputs, before spending any Dev Hub auth or scratch-org
       # quota on a request that can't succeed anyway.
       - name: Validate Inputs
+        env:
+          BRANCH: ${{ inputs.branch }}
+          EMAIL: ${{ inputs.email }}
         run: |
-          BRANCH="${{ inputs.branch }}"
-          EMAIL="${{ inputs.email }}"
-
           if [ -z "$BRANCH" ]; then
             echo "::error::branch input is empty."
             exit 1
@@ -98,11 +98,19 @@ jobs:
           # just for this step, as the documented workaround.
           SF_SCRATCH_SIGNUP_CONNECTED_APP: PlatformCLI
           SF_SCRATCH_SIGNUP_CALLBACK_URL: http://localhost:1717/OauthRedirect
+          # Passed through env rather than interpolated directly as ${{ inputs.branch }} below —
+          # GitHub substitutes ${{ }} into the script's literal text before bash ever runs it, so a
+          # branch name containing shell metacharacters ($, `, ", ;, etc.) would be interpreted by
+          # bash instead of treated as a plain string. inputs.branch is free-text, developer-supplied
+          # at workflow_dispatch time, so this is a real injection surface, not just a formatting
+          # nicety — see the same fix applied throughout this workflow, and the note in
+          # "Write Step Summary" below for the display bug this exact pattern caused with passwords.
+          RAW_BRANCH: ${{ inputs.branch }}
         run: |
           # Sanitize the branch name for use in an sf alias (aliases don't allow "/" or other
           # punctuation branch names commonly contain), then truncate so alias + run-id suffix stays
           # comfortably within CLI alias length limits.
-          SAFE_BRANCH=$(echo "${{ inputs.branch }}" | tr -c 'A-Za-z0-9' '-' | sed 's/-\+/-/g; s/^-//; s/-$//' | cut -c1-30)
+          SAFE_BRANCH=$(echo "$RAW_BRANCH" | tr -c 'A-Za-z0-9' '-' | sed 's/-\+/-/g; s/^-//; s/-$//' | cut -c1-30)
           SCRATCH_ALIAS="dev-${SAFE_BRANCH}-${{ github.run_id }}"
           echo "scratch-alias=$SCRATCH_ALIAS" >> "$GITHUB_OUTPUT"
 
@@ -116,10 +124,12 @@ jobs:
 
       # Step 6: Deploy the requested branch's source to the scratch org
       - name: Deploy Source to Scratch Org
+        env:
+          SCRATCH_ALIAS: ${{ steps.create-scratch.outputs.scratch-alias }}
         run: |
           sf project deploy start \
             --source-dir force-app \
-            --target-org "${{ steps.create-scratch.outputs.scratch-alias }}" \
+            --target-org "$SCRATCH_ALIAS" \
             --wait 30
 
       # Step 7: Generate a password so the developer can log in directly, and read back the org's
@@ -134,8 +144,10 @@ jobs:
       # session credential, never meant to be displayed anywhere, unlike the password.
       - name: Generate Login Credentials
         id: login-info
+        env:
+          SCRATCH_ALIAS: ${{ steps.create-scratch.outputs.scratch-alias }}
         run: |
-          ALIAS="${{ steps.create-scratch.outputs.scratch-alias }}"
+          ALIAS="$SCRATCH_ALIAS"
 
           PW_JSON=$(sf org generate password --target-org "$ALIAS" --json)
           GENERATED_PASSWORD=$(jq -r '.result.password' <<< "$PW_JSON")
@@ -167,21 +179,36 @@ jobs:
       # scratch orgs, not production data. Once email delivery is fixed: remove the password line
       # below and re-add `echo "::add-mask::$GENERATED_PASSWORD"` in "Generate Login Credentials" —
       # see the Email Developer step, left intact below.
+      #
+      # Bug fixed here: all the ${{ }} values below are passed through env instead of interpolated
+      # directly into the echo lines. GitHub substitutes ${{ }} into this script's literal text
+      # BEFORE bash runs it — a generated password containing "$" (e.g. "Qxivqexhtyj3$cmtrtau")
+      # would land in the script as literal text like `Qxivqexhtyj3$cmtrtau`, and bash would then try
+      # to expand $cmtrtau as an (unset, empty) variable — silently truncating the printed password
+      # right at the "$". Referencing $SCRATCH_PASSWORD as a proper env var instead means bash
+      # expands it exactly once, as a literal value, with no re-interpretation of its contents.
       - name: Write Step Summary
         if: always() && steps.create-scratch.outputs.scratch-alias != ''
+        env:
+          SCRATCH_ALIAS: ${{ steps.create-scratch.outputs.scratch-alias }}
+          BRANCH: ${{ inputs.branch }}
+          SCRATCH_USERNAME: ${{ steps.login-info.outputs.scratch-username }}
+          SCRATCH_LOGIN_URL: ${{ steps.login-info.outputs.scratch-login-url }}
+          SCRATCH_PASSWORD: ${{ steps.login-info.outputs.scratch-password }}
+          REQUEST_EMAIL: ${{ inputs.email }}
         run: |
           {
             echo "## Scratch Org Created"
             echo ""
-            echo "- Alias: \`${{ steps.create-scratch.outputs.scratch-alias }}\`"
-            echo "- Branch deployed: \`${{ inputs.branch }}\`"
-            echo "- Username: \`${{ steps.login-info.outputs.scratch-username }}\`"
-            echo "- Login URL: ${{ steps.login-info.outputs.scratch-login-url }}"
+            echo "- Alias: \`$SCRATCH_ALIAS\`"
+            echo "- Branch deployed: \`$BRANCH\`"
+            echo "- Username: \`$SCRATCH_USERNAME\`"
+            echo "- Login URL: $SCRATCH_LOGIN_URL"
             echo "- Expires: 30 days from creation"
             echo ""
-            echo "- Password: \`${{ steps.login-info.outputs.scratch-password }}\`"
+            echo "- Password: \`$SCRATCH_PASSWORD\`"
             echo ""
-            echo "_Password is also emailed to ${{ inputs.email }} when email delivery is working; shown here as a temporary fallback while it's broken._"
+            echo "_Password is also emailed to $REQUEST_EMAIL when email delivery is working; shown here as a temporary fallback while it's broken._"
           } >> "$GITHUB_STEP_SUMMARY"
 
       # Step 9: Notify the developer by email. continue-on-error so an SMTP hiccup doesn't fail the
