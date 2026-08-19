@@ -1,11 +1,16 @@
 @isTest
 private class ContactEmailValidationServiceTest {
 
+    // Only "valid" and "blank" are represented here — Salesforce enforces valid email format on
+    // the standard Contact.Email field at the database level, so a genuinely malformed, non-blank
+    // address (e.g. "not-an-email") can never exist as stored data; inserting one fails with
+    // INVALID_EMAIL_ADDRESS before this test class's logic ever runs. That branch of
+    // isValidEmail() is still covered below, just as a pure function call on a literal string
+    // (see testIsValidEmail_branchCoverage), not via inserted data.
     @TestSetup
     static void setupData() {
         insert new List<Contact>{
             new Contact(FirstName = 'Valid', LastName = 'Email', Email = 'valid@example.com'),
-            new Contact(FirstName = 'Invalid', LastName = 'Email', Email = 'not-an-email'),
             new Contact(FirstName = 'Blank', LastName = 'Email', Email = null)
         };
     }
@@ -26,7 +31,6 @@ private class ContactEmailValidationServiceTest {
         );
 
         System.assertEquals(false, updatedContactsById.get(contactIdByFirstName.get('Valid')).HasOptedOutOfEmail);
-        System.assertEquals(true, updatedContactsById.get(contactIdByFirstName.get('Invalid')).HasOptedOutOfEmail);
         System.assertEquals(true, updatedContactsById.get(contactIdByFirstName.get('Blank')).HasOptedOutOfEmail);
     }
 
