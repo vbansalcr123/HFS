@@ -150,8 +150,16 @@ jobs:
           echo "scratch-username=$USERNAME" >> "$GITHUB_OUTPUT"
 
       # Step 8: Durable fallback — written before the email step so the org's details are visible
-      # in the run even if email delivery fails. Password is intentionally omitted here; it only
-      # ever appears in the email itself.
+      # in the run even if email delivery fails.
+      #
+      # TEMPORARY: the password is now printed here too (not just emailed) because email delivery
+      # (Step 9, "Email Developer") is currently broken. Note this is a real exposure trade-off, not
+      # just a formatting choice: GitHub's ::add-mask:: (applied to GENERATED_PASSWORD in
+      # "Generate Login Credentials" above) only redacts step *logs* — it does NOT apply to
+      # $GITHUB_STEP_SUMMARY content, so the password below renders in plain text to anyone with
+      # read access to this repo's Actions runs, not just the requesting developer. Acceptable for
+      # now since these are 30-day throwaway scratch orgs, not production data. Revert to omitting it
+      # here once email delivery is fixed — see the Email Developer step, left intact below.
       - name: Write Step Summary
         if: always() && steps.create-scratch.outputs.scratch-alias != ''
         run: |
@@ -164,7 +172,9 @@ jobs:
             echo "- Login URL: ${{ steps.login-info.outputs.scratch-login-url }}"
             echo "- Expires: 30 days from creation"
             echo ""
-            echo "_Password was emailed to ${{ inputs.email }}; intentionally not shown here._"
+            echo "- Password: \`${{ steps.login-info.outputs.scratch-password }}\`"
+            echo ""
+            echo "_Password is also emailed to ${{ inputs.email }} when email delivery is working; shown here as a temporary fallback while it's broken._"
           } >> "$GITHUB_STEP_SUMMARY"
 
       # Step 9: Notify the developer by email. continue-on-error so an SMTP hiccup doesn't fail the
