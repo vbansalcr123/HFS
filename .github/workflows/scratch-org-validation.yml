@@ -44,59 +44,59 @@ jobs:
       - name: Install Salesforce CLI
         run: npm install -g @salesforce/cli
 
-      # --- Original JWT bearer flow auth, kept for reference / possible revert — commented out, not deleted ---
-      # We moved off this because our Dev Hub was set up against a custom External Client App (ECA),
-      # which the scratch-org signup service couldn't replicate into newly created scratch orgs
-      # (C-1016 / RemoteOrgSignupFailed). See the Auth URL step below for the replacement.
+      # --- Auth URL auth (attempted, then reverted) — commented out, not deleted. ---
+      # Reasoning we tried this: a plain `sf org login web` authenticates through Salesforce CLI's own
+      # built-in OAuth client instead of our custom External Client App (ECA), sidestepping the C-1016
+      # signup issue below entirely. In practice the refresh token kept coming back
+      # "RefreshTokenAuthError: expired access/refresh token" almost immediately after being generated,
+      # while JWT auth itself never once failed — only the downstream scratch-org-signup step did, and
+      # we already have a targeted fix for that (see the PlatformCLI workaround restored below). So we
+      # reverted to JWT + that workaround as the more reliable combination.
+      # SFDX_AUTH_URL, if revisited, is generated once via:
+      #   sf org login web --alias <alias>
+      #   sf org display --target-org <alias> --verbose --json   (copy the "sfdxAuthUrl" field)
       #
-      # - name: Authenticate Dev Hub (JWT Bearer Flow)
+      # - name: Authenticate Dev Hub (Auth URL)
       #   env:
-      #     DEVHUB_JWT_KEY: ${{ secrets.DEVHUB_JWT_KEY }}
-      #     DEVHUB_CONSUMER_KEY: ${{ secrets.DEVHUB_CONSUMER_KEY }}
-      #     DEVHUB_USERNAME: ${{ secrets.DEVHUB_USERNAME }}
+      #     SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
       #   run: |
-      #     echo "$DEVHUB_JWT_KEY" > server.key
-      #     echo "DEBUG: DEVHUB_USERNAME = $DEVHUB_USERNAME"
-      #     echo "DEBUG: DEVHUB_CONSUMER_KEY (masked) = ${DEVHUB_CONSUMER_KEY:0:6}...${DEVHUB_CONSUMER_KEY: -4} (length ${#DEVHUB_CONSUMER_KEY})"
-      #     echo "DEBUG: server.key line count = $(wc -l < server.key)"
-      #     echo "DEBUG: server.key has PEM header = $(grep -c '\-----BEGIN' server.key)"
-      #     echo "DEBUG: server.key has PEM footer = $(grep -c '\-----END' server.key)"
-      #     sf org login jwt \
-      #       --client-id "$DEVHUB_CONSUMER_KEY" \
-      #       --jwt-key-file server.key \
-      #       --username "$DEVHUB_USERNAME" \
+      #     echo "$SFDX_AUTH_URL" > authfile
+      #     echo "DEBUG: authfile length = $(wc -c < authfile) bytes"
+      #     sf org login sfdx-url \
+      #       --sfdx-url-file authfile \
       #       --set-default-dev-hub \
       #       --alias devhub
       #     echo "DEBUG: post-login org info:"
       #     sf org display --target-org devhub --verbose
       #     echo "DEBUG: full org list after login:"
       #     sf org list
-      #     rm server.key
-      # --- end original JWT auth ---
+      #     rm authfile
+      # --- end Auth URL auth ---
 
-      # Step 4: Authenticate to the Dev Hub using a stored Auth URL — i.e. reusing a normal, one-time
-      # interactive login (`sf org login web`), rather than the JWT bearer flow.
-      # We moved off JWT because our Dev Hub was set up against a custom External Client App (ECA),
-      # which the scratch-org signup service couldn't replicate into newly created scratch orgs
-      # (C-1016 / RemoteOrgSignupFailed). A plain web login authenticates through Salesforce CLI's own
-      # built-in OAuth client instead of a custom app, sidestepping that failure mode entirely.
-      # SFDX_AUTH_URL is generated once, manually, via:
-      #   sf org login web --alias <alias>
-      #   sf org display --target-org <alias> --verbose   (copy the "Sfdx Auth Url" field)
-      # It embeds a refresh token, so unlike a cert-based JWT setup it can occasionally be invalidated
-      # (password change, revoked connected app access, session policy change) and need regenerating —
-      # a manual, infrequent maintenance step, not something that affects normal automated runs.
-      - name: Authenticate Dev Hub (Auth URL)
+      # Step 4: Authenticate to the Dev Hub using the JWT bearer flow.
+      # DEVHUB_JWT_KEY holds the raw PEM private key (paired with the self-signed cert uploaded to the
+      # Connected App) — no interactive login/session involved, so this doesn't expire like an auth URL
+      # can (and did, when we tried that approach — see the commented-out block above). JWT auth itself
+      # was reliable every time we tested it; the only real problem was scratch-org signup (below).
+      - name: Authenticate Dev Hub (JWT Bearer Flow)
         env:
-          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+          DEVHUB_JWT_KEY: ${{ secrets.DEVHUB_JWT_KEY }}
+          DEVHUB_CONSUMER_KEY: ${{ secrets.DEVHUB_CONSUMER_KEY }}
+          DEVHUB_USERNAME: ${{ secrets.DEVHUB_USERNAME }}
         run: |
-          echo "$SFDX_AUTH_URL" > authfile
+          echo "$DEVHUB_JWT_KEY" > server.key
 
-          # ---- Debug: confirm the secret looks non-empty without ever printing the refresh token itself ----
-          echo "DEBUG: authfile length = $(wc -c < authfile) bytes"
+          # ---- Debug: sanity-check the secrets without ever printing the raw key/full consumer key ----
+          echo "DEBUG: DEVHUB_USERNAME = $DEVHUB_USERNAME"
+          echo "DEBUG: DEVHUB_CONSUMER_KEY (masked) = ${DEVHUB_CONSUMER_KEY:0:6}...${DEVHUB_CONSUMER_KEY: -4} (length ${#DEVHUB_CONSUMER_KEY})"
+          echo "DEBUG: server.key line count = $(wc -l < server.key)"
+          echo "DEBUG: server.key has PEM header = $(grep -c '\-----BEGIN' server.key)"
+          echo "DEBUG: server.key has PEM footer = $(grep -c '\-----END' server.key)"
 
-          sf org login sfdx-url \
-            --sfdx-url-file authfile \
+          sf org login jwt \
+            --client-id "$DEVHUB_CONSUMER_KEY" \
+            --jwt-key-file server.key \
+            --username "$DEVHUB_USERNAME" \
             --set-default-dev-hub \
             --alias devhub
 
@@ -105,22 +105,23 @@ jobs:
           echo "DEBUG: full org list after login:"
           sf org list
 
-          # Remove the auth file immediately after use, minimizing exposure of the embedded refresh
-          # token on the runner (the runner VM itself is destroyed after the job either way).
-          rm authfile
-
-      # --- Original signup workaround for the ECA-based JWT auth above — commented out, not deleted.
-      # Not needed with Auth URL (no custom ECA involved), but keep this here in case we revert to JWT.
-      #
-      # env:
-      #   SF_SCRATCH_SIGNUP_CONNECTED_APP: PlatformCLI
-      #   SF_SCRATCH_SIGNUP_CALLBACK_URL: http://localhost:1717/OauthRedirect
-      # --- end original signup workaround ---
+          # Remove the private key from disk as soon as it's no longer needed, minimizing its exposure
+          # window on the runner (the runner VM itself is destroyed after the job either way).
+          rm server.key
 
       # Step 5: Create a fresh, empty scratch org for this PR.
+      # Our Dev Hub is authenticated via an External Client App (ECA), which the scratch-org signup
+      # service can't replicate into the newly created scratch org (fails with C-1016 /
+      # RemoteOrgSignupFailed). Point signup at Salesforce's built-in PlatformCLI app instead, just
+      # for this step, as the documented workaround.
       - name: Create Scratch Org
         id: create-scratch
+        env:
+          SF_SCRATCH_SIGNUP_CONNECTED_APP: PlatformCLI
+          SF_SCRATCH_SIGNUP_CALLBACK_URL: http://localhost:1717/OauthRedirect
         run: |
+          echo "DEBUG: SF_SCRATCH_SIGNUP_CONNECTED_APP = $SF_SCRATCH_SIGNUP_CONNECTED_APP"
+          echo "DEBUG: SF_SCRATCH_SIGNUP_CALLBACK_URL = $SF_SCRATCH_SIGNUP_CALLBACK_URL"
           echo "DEBUG: org list right before create scratch:"
           sf org list
 
