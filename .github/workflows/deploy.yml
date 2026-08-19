@@ -1,4 +1,4 @@
-name: Deploy to Environment (dev/qa/uat/prod)
+name: Deploy to Environment. (dev/qa/uat/prod)
 
 on:
   workflow_dispatch:
@@ -54,10 +54,14 @@ jobs:
           node-version: 22
 
       # Step 3: Install Salesforce CLI and the git-delta plugin used to compute what changed.
+      # sfdx-git-delta isn't digitally signed by Salesforce (it's a widely-used community plugin,
+      # not an official one), so a plain "sf plugins install" prompts "Do you want to continue
+      # installation? (y/N)" — with no stdin on a GitHub Actions runner, that would just hang until
+      # the job times out. --force skips that confirmation.
       - name: Install Salesforce CLI
         run: |
           npm install -g @salesforce/cli
-          sf plugins install sfdx-git-delta
+          sf plugins install sfdx-git-delta --force
 
       # Step 4: Authenticate to the target org using the JWT bearer flow — same pattern already used
       # for Dev Hub auth in scratch-org-validation.yml/scratch-org-create.yml, but pointed at this
