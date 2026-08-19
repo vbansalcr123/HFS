@@ -179,7 +179,7 @@ jobs:
           username: ${{ secrets.SMTP_USERNAME }}
           password: ${{ secrets.SMTP_PASSWORD }}
           to: ${{ inputs.email }}
-          from: ${{ secrets.SMTP_USERNAME }}
+          from: ${{ secrets.SMTP_FROM_ADDRESS }}
           subject: "Your Salesforce scratch org (branch: ${{ inputs.branch }}) is ready"
           body: |
             Your scratch org has been created and deployed from branch '${{ inputs.branch }}'.
