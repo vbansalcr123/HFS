@@ -1,0 +1,275 @@
+name: Deploy to Environment (dev/qa/uat/prod)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - uat
+          - prod
+
+concurrency:
+  # One deploy in flight per environment. Unlike the scratch-org workflows, a deploy here mutates a
+  # real, persistent org mid-flight — cancelling it partway through would be worse than just queuing
+  # the next run behind it, so cancel-in-progress is explicitly off (default is false; stated here
+  # so it can't be missed).
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  # contents: write is required so the last step can push the deployed-<environment> tracking tag.
+  contents: write
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    # Ties this job to the matching GitHub Environment (dev/qa/uat/prod), which is where the
+    # environment-scoped CONSUMER_KEY/JWT_KEY/USERNAME secrets live, and where uat/prod's
+    # "Deployment branches and tags" restriction is enforced — GitHub blocks the run before any
+    # of these steps execute if the triggering ref isn't on that environment's allow-list.
+    environment: ${{ inputs.environment }}
+
+    steps:
+      # Step 1: Check out whatever branch/tag the CI/CD team picked in the workflow_dispatch "Use
+      # workflow from" selector. fetch-depth: 0 and fetch-tags are both required — delta computation
+      # needs full history plus the deployed-<environment> tag from a previous run.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Step 2: Setup Node.js Environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Node 20 hits a crash in @salesforce/cli's bundled undici
+          # (calls worker_threads.markAsUncloneable, added only in Node >=22.10)
+          node-version: 22
+
+      # Step 3: Install Salesforce CLI and the git-delta plugin used to compute what changed.
+      - name: Install Salesforce CLI
+        run: |
+          npm install -g @salesforce/cli
+          sf plugins install sfdx-git-delta
+
+      # Step 4: Authenticate to the target org using the JWT bearer flow — same pattern already used
+      # for Dev Hub auth in scratch-org-validation.yml/scratch-org-create.yml, but pointed at this
+      # environment's own org via the GitHub Environment's CONSUMER_KEY/JWT_KEY/USERNAME secrets
+      # (same secret names, different values per environment) instead of a Dev Hub.
+      - name: Authenticate to Target Org (JWT Bearer Flow)
+        env:
+          TARGET_JWT_KEY: ${{ secrets.JWT_KEY }}
+          TARGET_CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
+          TARGET_USERNAME: ${{ secrets.USERNAME }}
+        run: |
+          echo "$TARGET_JWT_KEY" > server.key
+
+          sf org login jwt \
+            --client-id "$TARGET_CONSUMER_KEY" \
+            --jwt-key-file server.key \
+            --username "$TARGET_USERNAME" \
+            --alias target-org
+
+          # Remove the private key from disk as soon as it's no longer needed.
+          rm server.key
+
+      # Step 5: Compute the delta since the last successful deploy to this environment.
+      #
+      # --- Delta strategy, end to end ---
+      # Each environment (dev/qa/uat/prod) has its own independent "high water mark": a git tag named
+      # deployed-<environment> that always points at the commit last successfully deployed to that
+      # specific org. That tag is the *only* state this whole mechanism depends on — there's no
+      # database, no external tracking file, just one movable tag per environment living in this repo.
+      #
+      # On every run:
+      #   FROM = the commit deployed-<environment> currently points at (read via git rev-parse).
+      #   TO   = the commit being deployed right now (github.sha, i.e. the tip of whatever branch/tag
+      #          was picked when the workflow was dispatched).
+      # sfdx-git-delta then runs the equivalent of `git diff --name-status FROM TO` scoped to
+      # force-app/, and translates the changed/added files into a package.xml Salesforce can deploy.
+      # This is what makes each run push *only what changed for that environment* rather than the
+      # whole org every time — qa and prod can sit at completely different points in history and each
+      # only ever receives its own outstanding delta.
+      #
+      # Bootstrap case: if deployed-<environment> doesn't exist yet (first-ever deploy to that
+      # environment), FROM falls back to git's well-known empty-tree SHA, so the diff is computed
+      # against "nothing" and every file counts as new — the first deploy is naturally a full deploy,
+      # with no special-casing needed anywhere else in this workflow.
+      #
+      # Destructive changes (deleted metadata) are intentionally NOT handled yet — see the commented-
+      # out block below and in the "Deploy Delta to Target Org" step. sfdx-git-delta would also emit
+      # .deploy-delta/destructiveChanges/destructiveChanges.xml for anything removed from force-app,
+      # but until that's re-enabled, deletions in source won't be reflected in the target orgs.
+      #
+      # Known caveat: this only knows about commits in *this* repo's history. Any deploy made outside
+      # this pipeline (e.g. straight from VS Code) doesn't move the deployed-<environment> tag, so the
+      # next pipeline run's delta would be computed against a stale baseline.
+      - name: Compute Delta
+        id: delta
+        run: |
+          FROM=$(git rev-parse "refs/tags/deployed-${{ inputs.environment }}" 2>/dev/null || echo 4b825dc642cb6eb9a060e54bf8d69288fbee4904)
+          TO="${{ github.sha }}"
+          echo "from=$FROM" >> "$GITHUB_OUTPUT"
+          echo "to=$TO" >> "$GITHUB_OUTPUT"
+
+          mkdir -p .deploy-delta
+          sf sgd:source:delta \
+            --from "$FROM" \
+            --to "$TO" \
+            --source-dir force-app \
+            --output-dir .deploy-delta
+
+          PACKAGE_XML=".deploy-delta/package/package.xml"
+          # DESTRUCTIVE_XML=".deploy-delta/destructiveChanges/destructiveChanges.xml"  # disabled for now — see strategy note above
+
+          HAS_ADDS="false"
+          if [ -f "$PACKAGE_XML" ] && grep -q "<types>" "$PACKAGE_XML"; then
+            HAS_ADDS="true"
+          fi
+
+          # HAS_DESTRUCTIVE="false"
+          # if [ -f "$DESTRUCTIVE_XML" ] && grep -q "<types>" "$DESTRUCTIVE_XML"; then
+          #   HAS_DESTRUCTIVE="true"
+          # fi
+
+          echo "has-changes=$HAS_ADDS" >> "$GITHUB_OUTPUT"
+          # echo "has-destructive=$HAS_DESTRUCTIVE" >> "$GITHUB_OUTPUT"
+
+      # Step 6: Nothing to deploy — record it and stop here (success, no-op). Keeps re-runs against
+      # an already-deployed commit cheap and unambiguous instead of erroring or silently deploying
+      # an empty package.
+      - name: Write "No Changes" Summary
+        if: steps.delta.outputs.has-changes == 'false'
+        run: |
+          {
+            echo "## No Changes to Deploy — ${{ inputs.environment }}"
+            echo ""
+            echo "No metadata has changed since the last successful deploy to **${{ inputs.environment }}** (\`${{ steps.delta.outputs.from }}\` → \`${{ steps.delta.outputs.to }}\`)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Step 7: Deploy the delta package to the target org, running local Apex tests as part of the
+      # same deploy transaction — required by Salesforce for production deploys anyway, and it means
+      # a test failure or insufficient org-wide coverage rolls the *entire* deploy back atomically
+      # instead of leaving the org partially updated.
+      # continue-on-error lets the next step still parse and report on a failed deploy's JSON output.
+      #
+      # Destructive changes (deletions) are disabled for now — deleted metadata in force-app won't be
+      # removed from the target org by this workflow. To re-enable: uncomment the HAS_DESTRUCTIVE /
+      # has-destructive lines in "Compute Delta" above, and the block below.
+      - name: Deploy Delta to Target Org
+        id: deploy
+        if: steps.delta.outputs.has-changes == 'true'
+        continue-on-error: true
+        run: |
+          mkdir -p deploy-results
+
+          DEPLOY_ARGS=(--manifest .deploy-delta/package/package.xml --target-org target-org --test-level RunLocalTests --wait 30 --json)
+          # if [ "${{ steps.delta.outputs.has-destructive }}" = "true" ]; then
+          #   DEPLOY_ARGS+=(--post-destructive-changes .deploy-delta/destructiveChanges/destructiveChanges.xml)
+          # fi
+
+          sf project deploy start "${DEPLOY_ARGS[@]}" > deploy-results/deploy-result.json
+
+      # Step 8: Report on the deploy and enforce our stricter, per-class 75% coverage minimum on top
+      # of Salesforce's own org-wide check (same 75% bar used in scratch-org-validation.yml's PR
+      # gate). Note: by the time this step runs, a *successful* deploy has already landed in the
+      # target org — Salesforce deploys are transactional, so failing this step for a per-class
+      # shortfall marks the run red for visibility and blocks the tracking-tag update below, but it
+      # can't itself undo metadata that already deployed cleanly.
+      - name: Enforce Deploy & Coverage Gates
+        id: enforce-gates
+        if: steps.delta.outputs.has-changes == 'true'
+        run: |
+          # Field names below (result.status, result.success, result.details.runTestResult.*) match
+          # the metadata Deploy API's current shape as surfaced by "sf project deploy start --json";
+          # like the equivalent gate in scratch-org-validation.yml, re-verify with one manual run if
+          # this step ever misbehaves.
+          RESULTS_FILE="deploy-results/deploy-result.json"
+
+          if [ ! -s "$RESULTS_FILE" ]; then
+            echo "::error::Deploy results file missing or empty — sf project deploy start likely crashed before producing output."
+            echo "## ❌ Deploy Failed to Produce Results" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          STATUS=$(jq -r '.result.status // "unknown"' "$RESULTS_FILE")
+          SUCCESS=$(jq -r '.result.success // false' "$RESULTS_FILE")
+          NUM_TESTS_RUN=$(jq -r '.result.details.runTestResult.numTestsRun // 0' "$RESULTS_FILE")
+          NUM_FAILURES=$(jq -r '.result.details.runTestResult.numFailures // 0' "$RESULTS_FILE")
+
+          FAILED_TESTS_MD=$(jq -r '
+            [.result.details.runTestResult.failures[]?]
+            | if length == 0 then "" else
+                (["| Test | Message |", "|------|---------|"] +
+                 (map("| " + (.name // "") + "." + (.methodName // "") + " | " + ((.message // "") | gsub("\\|"; "\\|") | gsub("\n"; " ")) + " |")))
+                | join("\n")
+              end
+          ' "$RESULTS_FILE")
+
+          UNDER_COVERED_MD=$(jq -r '
+            [.result.details.runTestResult.codeCoverage[]?
+              | select(.numLocations > 0)
+              | . + {coveredPercent: (((.numLocations - .numLocationsNotCovered) / .numLocations) * 100)}
+              | select(.coveredPercent < 75)]
+            | if length == 0 then "" else
+                (["| Class | Coverage | Covered/Total Lines |", "|-------|----------|---------------------|"] +
+                 (map("| " + .name + " | " + (.coveredPercent | floor | tostring) + "% | "
+                      + ((.numLocations - .numLocationsNotCovered) | tostring) + "/" + (.numLocations | tostring) + " |")))
+                | join("\n")
+              end
+          ' "$RESULTS_FILE")
+
+          UNDER_COVERED_COUNT=$(jq '
+            [.result.details.runTestResult.codeCoverage[]?
+              | select(.numLocations > 0)
+              | select((((.numLocations - .numLocationsNotCovered) / .numLocations) * 100) < 75)]
+            | length
+          ' "$RESULTS_FILE")
+
+          {
+            echo "## Deploy Result — ${{ inputs.environment }}"
+            echo ""
+            echo "- Deploy status: **$STATUS** (success: $SUCCESS)"
+            echo "- Tests ran: $NUM_TESTS_RUN (failing: $NUM_FAILURES)"
+            echo ""
+            if [ -n "$FAILED_TESTS_MD" ]; then
+              echo "### ❌ Failing Tests"
+              echo "$FAILED_TESTS_MD"
+              echo ""
+            fi
+            if [ -n "$UNDER_COVERED_MD" ]; then
+              echo "### ⚠️ Classes Below 75% Coverage"
+              echo "$UNDER_COVERED_MD"
+              echo ""
+            fi
+            if [ "$SUCCESS" = "true" ] && [ -z "$UNDER_COVERED_MD" ]; then
+              echo "✅ Deploy succeeded, all tests passed, every touched class meets the 75% per-class coverage minimum."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          EXIT_CODE=0
+          if [ "$SUCCESS" != "true" ]; then
+            echo "::error::Deploy to ${{ inputs.environment }} did not succeed (status: $STATUS)."
+            EXIT_CODE=1
+          fi
+          if [ "$UNDER_COVERED_COUNT" -gt 0 ]; then
+            echo "::error::$UNDER_COVERED_COUNT class(es) touched by this deploy are below 75% coverage."
+            EXIT_CODE=1
+          fi
+          exit $EXIT_CODE
+
+      # Step 9: Only reached if the gate step above succeeded (a failed step stops the job by
+      # default). Move the tracking tag to the commit that was just deployed — this tag is the only
+      # state the delta computation in Step 5 depends on for next time.
+      - name: Record Successful Deploy
+        if: steps.delta.outputs.has-changes == 'true'
+        run: |
+          git tag -f "deployed-${{ inputs.environment }}" "${{ github.sha }}"
+          git push origin "refs/tags/deployed-${{ inputs.environment }}" -f
