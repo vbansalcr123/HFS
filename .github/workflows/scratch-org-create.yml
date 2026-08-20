@@ -238,7 +238,11 @@ jobs:
       # Step 10: DM the requester directly on Slack with their org credentials (or a failure
       # notice), matched to the email they typed into the workflow_dispatch form. An incoming
       # webhook can only post to one fixed channel, so this needs a bot token instead — looked up
-      # via users.lookupByEmail, then conversations.open, then chat.postMessage.
+      # via users.lookupByEmail, then chat.postMessage directly with the user ID as the channel.
+      # Deliberately NOT using conversations.open to get a DM channel id first: that endpoint
+      # requires the im:write scope, which this bot token doesn't have (only chat:write and
+      # users:read.email) — chat.postMessage accepts a user ID as "channel" and opens the DM
+      # itself, so im:write is never needed.
       # continue-on-error: true for the same reason as "Email Developer" above — the org itself
       # was already created successfully, so a Slack API hiccup (bad token, user not in this
       # workspace) must not fail the whole run.
@@ -265,17 +269,6 @@ jobs:
           fi
           SLACK_USER_ID=$(jq -r '.user.id' <<< "$USER_LOOKUP")
 
-          OPEN_DM=$(curl -s -X POST -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-            -H 'Content-type: application/json; charset=utf-8' \
-            --data "$(jq -n --arg user "$SLACK_USER_ID" '{users: $user}')" \
-            https://slack.com/api/conversations.open)
-
-          if [ "$(jq -r '.ok' <<< "$OPEN_DM")" != "true" ]; then
-            echo "::warning::Slack DM open failed: $(jq -r '.error' <<< "$OPEN_DM")"
-            exit 0
-          fi
-          CHANNEL_ID=$(jq -r '.channel.id' <<< "$OPEN_DM")
-
           # Text built via jq --arg (not string interpolation) so a branch name, password, etc.
           # containing quotes/backslashes/newlines can't break the JSON payload.
           if [ "$STATUS" = "success" ]; then
@@ -288,10 +281,14 @@ jobs:
               '"❌ Your scratch org request (branch: \($branch)) failed. Check the GitHub Actions run for details."')
           fi
 
-          curl -s -X POST -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+          POST_RESULT=$(curl -s -X POST -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
             -H 'Content-type: application/json; charset=utf-8' \
-            --data "$(jq -n --arg channel "$CHANNEL_ID" --arg text "$TEXT" '{channel: $channel, text: $text}')" \
-            https://slack.com/api/chat.postMessage
+            --data "$(jq -n --arg channel "$SLACK_USER_ID" --arg text "$TEXT" '{channel: $channel, text: $text}')" \
+            https://slack.com/api/chat.postMessage)
+
+          if [ "$(jq -r '.ok' <<< "$POST_RESULT")" != "true" ]; then
+            echo "::warning::Slack DM post failed: $(jq -r '.error' <<< "$POST_RESULT")"
+          fi
 
       # Note: deliberately no "Run Apex Tests" step and no "Delete Scratch Org" step here — this
       # workflow hands the developer a working environment to develop in, it doesn't validate or
