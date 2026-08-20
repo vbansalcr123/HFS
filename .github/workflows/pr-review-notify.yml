@@ -1,0 +1,70 @@
+name: PR Review Notifications
+
+on:
+  pull_request:
+    types: [review_requested]
+    branches: [ main, develop, 'release/**' ]
+  pull_request_review:
+    types: [submitted]
+    branches: [ main, develop, 'release/**' ]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Notify via Slack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Fires when someone is added as a reviewer. requested_reviewer is only present for an
+      # individual user request (a team request sets requested_team instead) — team requests are
+      # deliberately skipped for now.
+      - name: Notify Requested Reviewer via Slack
+        if: github.event_name == 'pull_request' && github.event.action == 'review_requested' && github.event.requested_reviewer != null
+        continue-on-error: true
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          REVIEWER_LOGIN: ${{ github.event.requested_reviewer.login }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REPO: ${{ github.repository }}
+        run: |
+          TEXT=$(jq -n -r \
+            --arg author "$PR_AUTHOR" --arg title "$PR_TITLE" --arg num "$PR_NUMBER" \
+            --arg url "$PR_URL" --arg repo "$REPO" \
+            '"👀 You have been requested to review a PR on \($repo):\n*\($title)* (#\($num))\nAuthor: \($author)\n\($url)"')
+          bash .github/scripts/notify-slack-user.sh "$REVIEWER_LOGIN" "$TEXT"
+
+      # Fires when a reviewer submits a review. Only approved/changes_requested notify the author
+      # — a plain "commented" review is left alone as noise, not a decision point for the author.
+      - name: Notify PR Author via Slack
+        if: |
+          github.event_name == 'pull_request_review' && github.event.action == 'submitted' &&
+          (github.event.review.state == 'approved' || github.event.review.state == 'changes_requested')
+        continue-on-error: true
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REVIEWER: ${{ github.event.review.user.login }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$REVIEW_STATE" = "approved" ]; then
+            EMOJI="✅"; VERB="approved"
+          else
+            EMOJI="🔁"; VERB="requested changes on"
+          fi
+
+          TEXT=$(jq -n -r \
+            --arg emoji "$EMOJI" --arg reviewer "$REVIEWER" --arg verb "$VERB" \
+            --arg title "$PR_TITLE" --arg num "$PR_NUMBER" --arg url "$PR_URL" --arg repo "$REPO" \
+            '"\($emoji) \($reviewer) \($verb) your PR on \($repo):\n*\($title)* (#\($num))\n\($url)"')
+          bash .github/scripts/notify-slack-user.sh "$PR_AUTHOR" "$TEXT"
