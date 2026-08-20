@@ -235,6 +235,64 @@ jobs:
 
             This org expires 30 days from creation.
 
+      # Step 10: DM the requester directly on Slack with their org credentials (or a failure
+      # notice), matched to the email they typed into the workflow_dispatch form. An incoming
+      # webhook can only post to one fixed channel, so this needs a bot token instead — looked up
+      # via users.lookupByEmail, then conversations.open, then chat.postMessage.
+      # continue-on-error: true for the same reason as "Email Developer" above — the org itself
+      # was already created successfully, so a Slack API hiccup (bad token, user not in this
+      # workspace) must not fail the whole run.
+      - name: Notify Developer via Slack
+        if: always()
+        continue-on-error: true
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          STATUS: ${{ job.status }}
+          REQUEST_EMAIL: ${{ inputs.email }}
+          BRANCH: ${{ inputs.branch }}
+          SCRATCH_ALIAS: ${{ steps.create-scratch.outputs.scratch-alias }}
+          SCRATCH_LOGIN_URL: ${{ steps.login-info.outputs.scratch-login-url }}
+          SCRATCH_USERNAME: ${{ steps.login-info.outputs.scratch-username }}
+          SCRATCH_PASSWORD: ${{ steps.login-info.outputs.scratch-password }}
+        run: |
+          USER_LOOKUP=$(curl -s -G -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            --data-urlencode "email=$REQUEST_EMAIL" \
+            https://slack.com/api/users.lookupByEmail)
+
+          if [ "$(jq -r '.ok' <<< "$USER_LOOKUP")" != "true" ]; then
+            echo "::warning::Slack lookup for $REQUEST_EMAIL failed: $(jq -r '.error' <<< "$USER_LOOKUP")"
+            exit 0
+          fi
+          SLACK_USER_ID=$(jq -r '.user.id' <<< "$USER_LOOKUP")
+
+          OPEN_DM=$(curl -s -X POST -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H 'Content-type: application/json; charset=utf-8' \
+            --data "$(jq -n --arg user "$SLACK_USER_ID" '{users: $user}')" \
+            https://slack.com/api/conversations.open)
+
+          if [ "$(jq -r '.ok' <<< "$OPEN_DM")" != "true" ]; then
+            echo "::warning::Slack DM open failed: $(jq -r '.error' <<< "$OPEN_DM")"
+            exit 0
+          fi
+          CHANNEL_ID=$(jq -r '.channel.id' <<< "$OPEN_DM")
+
+          # Text built via jq --arg (not string interpolation) so a branch name, password, etc.
+          # containing quotes/backslashes/newlines can't break the JSON payload.
+          if [ "$STATUS" = "success" ]; then
+            TEXT=$(jq -n -r \
+              --arg branch "$BRANCH" --arg alias "$SCRATCH_ALIAS" --arg url "$SCRATCH_LOGIN_URL" \
+              --arg user "$SCRATCH_USERNAME" --arg pass "$SCRATCH_PASSWORD" \
+              '"✅ Your scratch org is ready (branch: \($branch))\nAlias: \($alias)\nLogin URL: \($url)\nUsername: \($user)\nPassword: \($pass)\n\nThis org expires 30 days from creation."')
+          else
+            TEXT=$(jq -n -r --arg branch "$BRANCH" \
+              '"❌ Your scratch org request (branch: \($branch)) failed. Check the GitHub Actions run for details."')
+          fi
+
+          curl -s -X POST -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H 'Content-type: application/json; charset=utf-8' \
+            --data "$(jq -n --arg channel "$CHANNEL_ID" --arg text "$TEXT" '{channel: $channel, text: $text}')" \
+            https://slack.com/api/chat.postMessage
+
       # Note: deliberately no "Run Apex Tests" step and no "Delete Scratch Org" step here — this
       # workflow hands the developer a working environment to develop in, it doesn't validate or
       # discard one. See scratch-org-validation.yml for the PR-triggered ephemeral counterpart.
