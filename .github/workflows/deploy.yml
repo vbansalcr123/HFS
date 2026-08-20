@@ -460,3 +460,37 @@ jobs:
         run: |
           git tag -f "deployed-${{ inputs.environment }}" "${{ github.sha }}"
           git push origin "refs/tags/deployed-${{ inputs.environment }}" -f
+
+      # Step 12: Report success/failure of this deploy to Slack, regardless of outcome (whether
+      # there were changes to deploy or not, and whether the gate step above passed or failed).
+      - name: Notify Slack
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STATUS: ${{ job.status }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "$STATUS" = "success" ]; then
+            COLOR="#2eb886"; EMOJI="✅"
+          elif [ "$STATUS" = "cancelled" ]; then
+            COLOR="#808080"; EMOJI="⚪"
+          else
+            COLOR="#e01e5a"; EMOJI="❌"
+          fi
+
+          # Built via jq --arg (not string interpolation) so a branch name or actor containing
+          # quotes/backslashes can't break the JSON payload or inject extra fields.
+          PAYLOAD=$(jq -n \
+            --arg color "$COLOR" \
+            --arg text "$EMOJI *$ENVIRONMENT Deploy — $STATUS*\n*Repo:* $REPO\n*Branch:* \`$BRANCH\`\n*Triggered by:* $ACTOR" \
+            --arg url "$RUN_URL" \
+            '{attachments: [{color: $color, blocks: [
+              {type: "section", text: {type: "mrkdwn", text: $text}},
+              {type: "actions", elements: [{type: "button", text: {type: "plain_text", text: "View Run"}, url: $url}]}
+            ]}]}')
+
+          curl -s -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"
