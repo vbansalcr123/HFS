@@ -4,15 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-This is a Salesforce project. It currently contains no source code yet — the `.gitignore` is set up for Salesforce tooling (ignores `.sf/`, `.sfdx/`, `.localdevserver/`, LWC Jest coverage, etc.), but no `sfdx-project.json` or `force-app/` directory exists yet.
+Salesforce project with three package directories under `force-app/`: `hfs-backend` (Apex classes, LWC, permission sets), `hfs-frontend` (LWC, objects, static resources), and `hfs-integration` (Apex classes, LWC, aura). `sfdx-project.json` and `package.json` are both set up.
 
-The project will include Apex, LWC, and other Salesforce metadata (objects, flows, permission sets, etc.).
+Commands (from `package.json`):
+- `npm run lint` — ESLint over `aura`/`lwc` JS
+- `npm test` — LWC Jest tests via `sfdx-lwc-jest`; single component: `npx sfdx-lwc-jest -- <componentName>`
+- `npm run prettier` / `npm run prettier:verify` — format / check formatting (Apex, LWC, and other tracked file types)
+- Apex tests run via Salesforce CLI, not npm: `sf apex run test --test-level RunLocalTests --code-coverage` (see `.github/workflows/scratch-org-validation.yml`); single class: `sf apex run test --tests <ClassName>`
 
-When real code, build tooling, or tests are added to this repo, update this file with the actual commands (build/lint/test/single-test) and architecture notes.
+Update this section again as the architecture evolves (new package directories, changed tooling, etc.).
 
-## Apex development
+## Apex & LWC development standards
 
 Apex code follows the **fflib** pattern (Apex Enterprise Patterns — Domain, Selector, Service, Unit of Work layers). When writing or reviewing Apex, adhere to this layered architecture rather than putting logic directly in triggers or controllers.
+
+Full coding standards — naming conventions, LWC component patterns, test class structure, error handling/logging, and a running list of open/future decisions — are documented in `docs/Apex-LWC-Development-Standards-HFS-V1.md` (currently under review). Treat it as binding once finalized; flag rather than silently deviate.
 
 ## Branch naming convention
 
