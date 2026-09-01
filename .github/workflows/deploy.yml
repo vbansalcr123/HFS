@@ -107,6 +107,13 @@ jobs:
           # Remove the private key from disk as soon as it's no longer needed.
           rm server.key
 
+          # Log which org/user this run actually hit — the first thing needed when a run's
+          # behavior looks wrong. Default (non --verbose) "sf org display" output does not
+          # include the access/refresh token, so this is safe to print.
+          echo "--- Target org identity ---"
+          sf org display --target-org target-org --json | jq '{id: .result.id, username: .result.username, instanceUrl: .result.instanceUrl, alias: .result.alias}'
+          echo "----------------------------"
+
       # Step 5: Compute the delta since the last successful deploy to this environment.
       #
       # --- Delta strategy, end to end ---
@@ -172,6 +179,18 @@ jobs:
 
           PACKAGE_XML=".deploy-delta/package/package.xml"
           # DESTRUCTIVE_XML=".deploy-delta/destructiveChanges/destructiveChanges.xml"  # disabled for now — see strategy note above
+
+          # Print the exact manifest sfdx-git-delta produced, directly in this step's log —
+          # the "Write Delta Summary" step below only renders a reformatted table, and only when
+          # has-changes is true. Having the raw XML here too means a bad/unexpected delta is
+          # visible immediately, without waiting on that later step.
+          echo "--- Generated package.xml ---"
+          if [ -f "$PACKAGE_XML" ]; then
+            cat "$PACKAGE_XML"
+          else
+            echo "(none generated)"
+          fi
+          echo "------------------------------"
 
           HAS_ADDS="false"
           if [ -f "$PACKAGE_XML" ] && grep -q "<types>" "$PACKAGE_XML"; then
@@ -300,6 +319,12 @@ jobs:
             fi
           fi
 
+          echo "--- Test level for ${{ inputs.environment }}: $TEST_LEVEL ---"
+          if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
+            printf '%s\n' "${TEST_CLASSES[@]}"
+          fi
+          echo "-------------------------------------------------------------"
+
           # --json mode makes the CLI suppress ALL human-readable console output, success or
           # failure, and instead write one JSON blob to stdout (redirected below into the results
           # file) — nothing is duplicated to stderr/console. Combined with bash's default -e, a
@@ -333,16 +358,45 @@ jobs:
       # running Apex tests a second time. Must happen within 10 days of a successful validation
       # (never a concern within a single workflow run). continue-on-error so the gate step below can
       # still report clearly if this specific step is what failed.
+      #
+      # Known failure mode this guards against: "sf project deploy quick" can itself error out
+      # (e.g. --wait 30 timing out mid-poll, or a transient network blip) AFTER Salesforce has
+      # already accepted and started the deploy — the async job keeps running server-side
+      # regardless of whether the CLI call that submitted it succeeded. Trusting only that call's
+      # own exit code/JSON produces a false "failed" even when the deploy actually lands (seen in
+      # practice against dev-sandbox: this step reported failure while Salesforce Setup ->
+      # Deployment Status showed the deploy had succeeded). So after the submitting call, always
+      # follow up with "sf project deploy report" to ask Salesforce directly for the deploy
+      # request's real final status, and treat THAT as authoritative in the gate step below.
       - name: Quick Deploy Validated Changes
         id: deploy
         if: steps.delta.outputs.has-changes == 'true' && steps.validate.outcome == 'success'
         continue-on-error: true
         run: |
+          set +e
           sf project deploy quick \
             --job-id "${{ steps.validate.outputs.job-id }}" \
             --target-org target-org \
             --wait 30 \
             --json > deploy-results/quick-deploy-result.json
+          QUICK_DEPLOY_EXIT_CODE=$?
+          set -e
+
+          echo "--- sf project deploy quick exited $QUICK_DEPLOY_EXIT_CODE ---"
+          cat deploy-results/quick-deploy-result.json
+          echo "-------------------------------------------------------------"
+
+          set +e
+          sf project deploy report \
+            --job-id "${{ steps.validate.outputs.job-id }}" \
+            --target-org target-org \
+            --wait 30 \
+            --json > deploy-results/quick-deploy-report.json
+          set -e
+
+          echo "--- sf project deploy report (authoritative status) ---"
+          cat deploy-results/quick-deploy-report.json
+          echo "-------------------------------------------------------------"
 
       # Step 10: Report on both stages and enforce our stricter, per-class 75% coverage minimum on
       # top of Salesforce's own org-wide check (same 75% bar used in scratch-org-validation.yml's PR
@@ -362,6 +416,7 @@ jobs:
           # this step ever misbehaves.
           VALIDATE_RESULTS_FILE="deploy-results/validate-result.json"
           QUICK_DEPLOY_RESULTS_FILE="deploy-results/quick-deploy-result.json"
+          QUICK_DEPLOY_REPORT_FILE="deploy-results/quick-deploy-report.json"
 
           if [ ! -s "$VALIDATE_RESULTS_FILE" ]; then
             echo "::error::Validation results file missing or empty — sf project deploy validate likely crashed before producing output."
@@ -374,8 +429,16 @@ jobs:
           NUM_TESTS_RUN=$(jq -r '.result.details.runTestResult.numTestsRun // 0' "$VALIDATE_RESULTS_FILE")
           NUM_FAILURES=$(jq -r '.result.details.runTestResult.numFailures // 0' "$VALIDATE_RESULTS_FILE")
 
+          # Prefer the authoritative "deploy report" status (a direct ask to Salesforce for the
+          # deploy request's real final state) over the submitting "deploy quick" call's own
+          # result, since that call can report a false failure if it errors out after Salesforce
+          # already accepted and completed the deploy (see the comment on "Quick Deploy Validated
+          # Changes" above). Fall back to the submitting call's own result only if the report is
+          # missing entirely (e.g. the submitting call failed before a job id was even redeemed).
           QUICK_DEPLOY_SUCCESS="false"
-          if [ -s "$QUICK_DEPLOY_RESULTS_FILE" ]; then
+          if [ -s "$QUICK_DEPLOY_REPORT_FILE" ]; then
+            QUICK_DEPLOY_SUCCESS=$(jq -r '.result.success // false' "$QUICK_DEPLOY_REPORT_FILE")
+          elif [ -s "$QUICK_DEPLOY_RESULTS_FILE" ]; then
             QUICK_DEPLOY_SUCCESS=$(jq -r '.result.success // false' "$QUICK_DEPLOY_RESULTS_FILE")
           fi
 
@@ -461,6 +524,24 @@ jobs:
         run: |
           git tag -f "deployed-${{ inputs.environment }}" "${{ github.sha }}"
           git push origin "refs/tags/deployed-${{ inputs.environment }}" -f
+
+      # Step 11.5: Persist the full diagnostic bundle (delta package.xml, validate JSON,
+      # quick-deploy JSON, quick-deploy report JSON) as a downloadable artifact, regardless of
+      # which step failed or whether there were any changes to deploy at all. Without this,
+      # deploy-results/ and .deploy-delta/ only ever existed on the ephemeral runner and were gone
+      # the moment the job finished — the only way to root-cause a failure after the fact was to
+      # cross-check Salesforce Setup by hand. if-no-files-found: ignore because both directories
+      # are conditionally created (e.g. never on a no-changes run).
+      - name: Upload Deploy Diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-diagnostics-${{ inputs.environment }}-${{ github.run_id }}
+          path: |
+            deploy-results/
+            .deploy-delta/
+          retention-days: 14
+          if-no-files-found: ignore
 
       # Step 12: Report success/failure of this deploy to Slack, regardless of outcome (whether
       # there were changes to deploy or not, and whether the gate step above passed or failed).
