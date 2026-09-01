@@ -12,6 +12,7 @@ on:
           - qa
           - uat
           - prod
+          - dev-sandbox
 
 concurrency:
   # One deploy in flight per environment. Unlike the scratch-org workflows, a deploy here mutates a
