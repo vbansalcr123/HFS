@@ -1,0 +1,64 @@
+name: AI PR Review (Correctness)
+
+# Runs the hfs-pr-review skill (.claude/skills/hfs-pr-review/SKILL.md) as the
+# Section 10 "AI review first" gate. Posts a formal GitHub review (Request
+# Changes / Comment) under the Claude GitHub App's own bot identity — never
+# the PR author's account, so it isn't subject to GitHub's self-approval
+# restriction and shows up as a distinct entry for the human reviewer.
+#
+# Prerequisites (one-time, not done by this file):
+#   1. Install the Claude GitHub App on this repo — run `/install-github-app`
+#      from Claude Code, or install https://github.com/apps/claude manually.
+#   2. Add ONE of these repo secrets and uncomment the matching line below:
+#        - CLAUDE_CODE_OAUTH_TOKEN  (generate locally with `claude setup-token`)
+#          NOTE: this ties usage/billing to whichever person's Claude Code
+#          subscription generated the token — it runs on an INDIVIDUAL'S
+#          plan, not a team- or org-owned credential. Fine for a 3-person
+#          repo, but if that matters (the token holder leaves, usage should
+#          be attributed to the org, etc.), use ANTHROPIC_API_KEY instead.
+#        - ANTHROPIC_API_KEY        (from console.anthropic.com — a real,
+#          org-owned credential with its own billing, not tied to a person)
+#   3. On protected branches, set "Require approving reviews" to 2, not 1.
+#      The bot fills one slot (or blocks merge entirely via Request Changes
+#      until it clears its own review); a human must always fill the other.
+#      With only 1 required approval, the bot's own clearing-approve could
+#      satisfy the whole gate and let a PR merge with no human review at all.
+#
+# KNOWN LIMITATION — billing/quota: CLAUDE_CODE_OAUTH_TOKEN usage from GitHub
+# Actions draws from Anthropic's separate, capped monthly credit for
+# automated/Agent SDK usage, not unlimited subscription use the way
+# interactive `claude` sessions are. If that credit runs out, this workflow
+# can fail outright (quota/auth error) rather than degrade gracefully.
+# Monitor usage, and re-check current Anthropic billing docs periodically —
+# this area has changed more than once in 2026.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  ai-review:
+    # Skip drafts and forked PRs (forks don't get repo secrets, so the run would fail anyway)
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.fork == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run hfs-pr-review skill
+        uses: anthropics/claude-code-action@v1
+        with:
+          # Runs on an INDIVIDUAL's Claude subscription (whoever ran
+          # `claude setup-token`), not a team/org plan — see note above.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: "/hfs-pr-review ${{ github.event.pull_request.number }}"
+          claude_args: >-
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checkout:*),Bash(gh pr review:*),Bash(git:*)"
