@@ -1,0 +1,71 @@
+#!/bin/bash
+# .githooks/pre-push
+#
+# Runs a local pass of the hfs-pr-review skill against everything about to
+# be pushed, using the developer's own local `claude` CLI (their own
+# personal Claude Code login/subscription — a different auth path from the
+# GitHub Action's repo secret). Catches issues before they leave this
+# machine, regardless of whether the code was written by hand or by Claude
+# Code.
+#
+# This is advisory, not a real gate: skip it anytime with
+#   git push --no-verify
+# The actual enforced checkpoint is the GitHub Action on the opened PR —
+# see .github/workflows/claude-pr-review.yml. Nothing here is meant to
+# replace that.
+#
+# One-time setup (once per clone, not per push):
+#   git config core.hooksPath .githooks
+#   chmod +x .githooks/pre-push
+# On Windows, run both from Git Bash. Git doesn't reliably preserve the
+# executable bit through some Windows checkouts/tools — if pushes stop
+# invoking this at all after a fresh clone, re-run the chmod line.
+#
+# Requires the `claude` CLI installed and logged in locally, and `jq`.
+
+set -euo pipefail
+
+# Consume stdin per the git pre-push contract (local ref, local sha,
+# remote ref, remote sha per line) — not needed for this simple diff-based
+# check, but must be read or git will complain.
+cat > /dev/null
+
+BASE_BRANCH="develop"
+
+if ! command -v claude > /dev/null 2>&1; then
+  echo "hfs pre-push check: 'claude' CLI not found on PATH — skipping local review." >&2
+  echo "  (This is advisory-only; the real gate runs on the PR in GitHub.)" >&2
+  exit 0
+fi
+
+# Only bother if there are actual Apex/LWC changes relative to develop.
+if ! git rev-parse --verify --quiet "origin/${BASE_BRANCH}" > /dev/null; then
+  echo "hfs pre-push check: no origin/${BASE_BRANCH} ref found — skipping local review." >&2
+  exit 0
+fi
+
+CHANGED=$(git diff --name-only "origin/${BASE_BRANCH}...HEAD" -- '*.cls' '*.trigger' 'lwc/**/*.js' 2>/dev/null || true)
+if [ -z "$CHANGED" ]; then
+  exit 0
+fi
+
+echo "hfs pre-push check: running local AI review of changed Apex/LWC files..."
+
+OUTPUT=$(claude -p "/hfs-pr-review local" 2>&1) || {
+  echo "hfs pre-push check: the local review itself failed to run (see below) — not blocking the push on a tooling failure." >&2
+  echo "$OUTPUT" >&2
+  exit 0
+}
+
+echo "$OUTPUT"
+
+LAST_LINE=$(printf '%s\n' "$OUTPUT" | grep -v '^[[:space:]]*$' | tail -n1)
+
+if [ "$LAST_LINE" = "HFS_REVIEW_RESULT: ISSUES_FOUND" ]; then
+  echo ""
+  echo "hfs pre-push check: found a likely functional issue (see above)." >&2
+  echo "Fix it, or override with: git push --no-verify" >&2
+  exit 1
+fi
+
+exit 0
