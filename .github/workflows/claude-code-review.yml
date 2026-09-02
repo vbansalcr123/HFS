@@ -6,10 +6,8 @@ on:
 
 concurrency:
   # Scoped per-PR so a rapid follow-up push cancels an in-flight review run rather than racing
-  # it — this workflow's own prompt logic reads existing reviews via `gh pr view --json reviews`
-  # then conditionally posts one, so two overlapping runs could both read stale state and
-  # double-post or race an --approve against a --request-changes. Same pattern as
-  # scratch-org-validation.yml's PR-scoped concurrency group.
+  # it — two overlapping runs could otherwise both post a review, or race an --approve against
+  # a --request-changes. Same pattern as scratch-org-validation.yml's PR-scoped concurrency group.
   group: claude-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
@@ -32,9 +30,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
           prompt: |
-            First, check whether you (this bot account) already have a review on
-            this PR with "Changes Requested" status, using `gh pr view --json reviews`.
-
             Review the current diff for functional and logic correctness only.
             Do not flag naming conventions, formatting, or general security best
             practices — PMD (Salesforce Code Analyzer) and ESLint already enforce
@@ -54,16 +49,11 @@ jobs:
             review body — each one gets its own inline comment where it actually lives.
 
             Then submit exactly one of the following via `gh pr review`. `gh pr review`
-            fails when run non-interactively without a body, so --request-changes and
-            --comment MUST always include --body "<your summary>" (or -b) — never
-            invoke either without it. --approve does not require a body. Since issues
-            are now detailed via inline comments, keep this body to a short summary
-            (e.g. "N issue(s) found — see inline comments") rather than restating them.
+            fails when run non-interactively without a body, so --request-changes
+            MUST always include --body "<your summary>" (or -b) — never invoke it
+            without one. --approve does not require a body. Since issues are now
+            detailed via inline comments, keep this body to a short summary (e.g.
+            "N issue(s) found — see inline comments") rather than restating them.
             - Real bug found: `gh pr review --request-changes --body "<summary>"`.
-            - No bugs found, and you have no prior "Changes Requested" review here:
-              `gh pr review --comment --body "<summary>"` summarizing the pass. Do not
-              approve — this keeps the review visible without consuming a
-              required-approval slot.
-            - No bugs found, and you DO have a prior "Changes Requested" review from
-              an earlier run: `gh pr review --approve`, noting this clears your own
-              earlier block — not a statement that no human review is needed.
+            - No bugs found: `gh pr review --approve`, clearing any earlier
+              "Changes Requested" review of yours on this PR if one exists.
