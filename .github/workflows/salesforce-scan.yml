@@ -2,7 +2,7 @@ name: Salesforce Code Analyzer Scan
 
 on:
   pull_request:
-    branches: [ main, develop, 'release/**' ] # Triggers on PRs targeting main, develop, or any release branch
+    branches: [main, develop, "release/**"] # Triggers on PRs targeting main, develop, or any release branch
 
 permissions:
   contents: read
@@ -55,7 +55,7 @@ jobs:
         run: |
           CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR \
             "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" \
-            -- force-app | paste -sd, -)
+            -- force-app | sed 's/.*/"&"/' | paste -sd, -)
 
           if [ -z "$CHANGED_FILES" ]; then
             echo "has-files=false" >> "$GITHUB_OUTPUT"
@@ -74,7 +74,7 @@ jobs:
         if: steps.changed-files.outputs.has-files == 'true'
         uses: forcedotcom/run-code-analyzer@v2
         with:
-          run-arguments: '--target ${{ steps.changed-files.outputs.files }} --view detail --output-file sfca_results.json'
+          run-arguments: "--target ${{ steps.changed-files.outputs.files }} --view detail --output-file sfca_results.json"
           # Required to compute the *-in-changed-files outputs and post a PR review
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
