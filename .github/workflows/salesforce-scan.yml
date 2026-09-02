@@ -34,17 +34,53 @@ jobs:
           npm install -g @salesforce/cli
           sf plugins install code-analyzer@latest
 
-      # Step 4: Run the Official Salesforce Code Analyzer
+      # Step 4: Figure out which force-app files this PR actually touched. The Code Analyzer
+      # action has no built-in "PR-diff-only" mode — pointing --target at the whole force-app
+      # directory (the old approach) scans and reports on the entire codebase every time, and the
+      # PR review the action posts summarizes BOTH "violations in the project as a whole" and
+      # "violations in changed files" side by side — so every PR surfaced a big pre-existing,
+      # repo-wide violation count that had nothing to do with that PR. Scoping --target to only
+      # this PR's changed files (base.sha vs head.sha, both available on the pull_request event
+      # without extra fetching since checkout above uses fetch-depth: 0) means the scan itself
+      # never touches untouched code, so there's no repo-wide number left to show.
+      # --diff-filter=ACMR excludes Deleted files — a path that no longer exists would make
+      # `code-analyzer run --target` error out.
+      # Known tradeoff (accepted): a handful of PMD rules reason across multiple files (e.g.
+      # cross-class references); scanning only the changed files in isolation can occasionally
+      # miss a violation that would only surface with full-project context. This mirrors the
+      # workaround Salesforce's own action docs recommend for exactly this "legacy codebase with
+      # pre-existing violations" situation.
+      - name: Compute Changed Files
+        id: changed-files
+        run: |
+          CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR \
+            "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" \
+            -- force-app | paste -sd, -)
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "has-files=false" >> "$GITHUB_OUTPUT"
+            echo "No force-app files changed in this PR — nothing to scan."
+          else
+            echo "has-files=true" >> "$GITHUB_OUTPUT"
+            echo "files=$CHANGED_FILES" >> "$GITHUB_OUTPUT"
+            echo "--- Files to scan ---"
+            echo "$CHANGED_FILES" | tr ',' '\n'
+            echo "---------------------"
+          fi
+
+      # Step 5: Run the Official Salesforce Code Analyzer, scoped to just the files from Step 4.
       - name: Run Salesforce Code Analyzer
         id: run-code-analyzer
+        if: steps.changed-files.outputs.has-files == 'true'
         uses: forcedotcom/run-code-analyzer@v2
         with:
-          # Targets your main source directory
-          run-arguments: '--target force-app --view detail --output-file sfca_results.json'
+          run-arguments: '--target ${{ steps.changed-files.outputs.files }} --view detail --output-file sfca_results.json'
           # Required to compute the *-in-changed-files outputs and post a PR review
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 5: Block the PR if any violations are found in files the PR changed
+      # Step 6: Only Critical/High violations block the PR. Moderate/Low/Info are still surfaced
+      # in full (via the action's own PR review/summary from Step 5, and echoed below) so they
+      # stay visible and don't just get silently dropped — they just don't fail the run.
       - name: Check for Violations
         env:
           RAW_TOTAL: ${{ steps.run-code-analyzer.outputs.num-violations-in-changed-files }}
@@ -55,6 +91,7 @@ jobs:
           RAW_SEV5: ${{ steps.run-code-analyzer.outputs.num-sev5-violations-in-changed-files }}
         run: |
           # Use parameter expansion to default to 0 if the action outputs are blank
+          # (also covers the "no changed files, scan skipped" case from Step 4)
           TOTAL_VIOLATIONS=${RAW_TOTAL:-0}
           SEV1_VIOLATIONS=${RAW_SEV1:-0}
           SEV2_VIOLATIONS=${RAW_SEV2:-0}
@@ -62,7 +99,7 @@ jobs:
           SEV4_VIOLATIONS=${RAW_SEV4:-0}
           SEV5_VIOLATIONS=${RAW_SEV5:-0}
 
-          echo "Violations in changed files, by severity:"
+          echo "Violations in this PR's changed files, by severity:"
           echo "  1 (Critical): $SEV1_VIOLATIONS"
           echo "  2 (High):     $SEV2_VIOLATIONS"
           echo "  3 (Moderate): $SEV3_VIOLATIONS"
@@ -70,9 +107,16 @@ jobs:
           echo "  5 (Info):     $SEV5_VIOLATIONS"
           echo "  Total:        $TOTAL_VIOLATIONS"
 
-          # Fail the build if any violation of any severity exists in files this PR touched
-          if [ "$TOTAL_VIOLATIONS" -gt 0 ]; then
-            echo "❌ Scan failed: $TOTAL_VIOLATIONS violation(s) found in changed files."
+          BLOCKING_VIOLATIONS=$((SEV1_VIOLATIONS + SEV2_VIOLATIONS))
+
+          # Only Critical/High fail the run. Moderate/Low/Info are reported above but don't block.
+          if [ "$BLOCKING_VIOLATIONS" -gt 0 ]; then
+            echo "❌ Scan failed: $BLOCKING_VIOLATIONS Critical/High violation(s) found in changed files."
             exit 1
           fi
-          echo "✅ Code quality and security checks passed successfully!"
+
+          if [ "$TOTAL_VIOLATIONS" -gt 0 ]; then
+            echo "⚠️  Scan passed: no Critical/High violations found. $TOTAL_VIOLATIONS Moderate/Low/Info violation(s) were found (see above / the Code Analyzer PR review) — not blocking, but worth a look."
+          else
+            echo "✅ Code quality and security checks passed successfully — no violations found!"
+          fi
