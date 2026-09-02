@@ -267,6 +267,13 @@ export default class Hfs_card extends LightningElement {
   }
 
   handleOpenKeydown(event) {
+    // Only open when the media container itself is the keydown target.
+    // Nested controls (e.g. the favourite star) bubble their keydown up
+    // here; without this guard, pressing Enter/Space on the star would
+    // also fire `open`. Mirrors the click-path stopPropagation guard.
+    if (event.target !== event.currentTarget) {
+      return;
+    }
     if (
       event.key === "Enter" ||
       event.key === " " ||
