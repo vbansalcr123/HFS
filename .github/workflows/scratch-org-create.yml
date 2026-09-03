@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch whose metadata to deploy'
+        description: "Branch whose metadata to deploy"
         required: true
-        default: 'develop'
+        default: "develop"
       email:
-        description: 'Your email address (org login details will be sent here)'
+        description: "Your email address (org login details will be sent here)"
         required: true
 
 concurrency:
@@ -121,6 +121,34 @@ jobs:
             --duration-days 30 \
             --wait 10 \
             --set-default
+
+      # Step 5b: Install the fflib unlocked packages (Apex Enterprise Patterns) this org depends on.
+      # These are our own packages, built from pinned commits of apex-enterprise-patterns'
+      # fflib-apex-mocks (@6889cc0) and fflib-apex-common (@e6f3409) — see packages/apex-mocks and
+      # packages/apex-common in this repo. Installed by Subscriber Package Version Id (04t...)
+      # rather than deployed as source, so this org gets a fixed, versioned dependency instead of
+      # re-vendoring/re-cloning fflib source. Neither version has been promoted (sf package version
+      # promote) — that's fine, unpromoted unlocked package versions install into scratch orgs
+      # without restriction; promotion is only required for non-scratch orgs. apex-mocks installs
+      # first: apex-common has no hard dependency on it (verified against the pinned source), but
+      # this keeps install order consistent with sfdx-project.json's packageDirectories order.
+      - name: Install fflib Packages
+        env:
+          SCRATCH_ALIAS: ${{ steps.create-scratch.outputs.scratch-alias }}
+          FFLIB_APEX_MOCKS_VERSION_ID: 04tHp000001iKqNIAU # fflib-apex-mocks 0.1.0.1
+          FFLIB_APEX_COMMON_VERSION_ID: 04tHp000001iKqSIAU # fflib-apex-common 0.1.0.1
+        run: |
+          sf package install \
+            --package "$FFLIB_APEX_MOCKS_VERSION_ID" \
+            --target-org "$SCRATCH_ALIAS" \
+            --wait 10 \
+            --no-prompt
+
+          sf package install \
+            --package "$FFLIB_APEX_COMMON_VERSION_ID" \
+            --target-org "$SCRATCH_ALIAS" \
+            --wait 10 \
+            --no-prompt
 
       # Step 6: Deploy the requested branch's source to the scratch org
       - name: Deploy Source to Scratch Org
