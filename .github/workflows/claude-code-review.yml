@@ -28,22 +28,22 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # NOTE: an earlier version of this workflow tried to have Claude call the
-          # resolveReviewThread GraphQL mutation directly (via a dedicated bot PAT) to
-          # actually resolve stale threads. That's not viable: GitHub's fine-grained PATs
-          # don't support that mutation at all (confirmed live: FORBIDDEN even with
-          # correct "Pull requests: Read and write" permission), and a classic PAT would
-          # be needed instead. Rather than hand the agent a broader credential, we settle
-          # for a reply comment acknowledging the fix, using the default GITHUB_TOKEN.
-          # This must go through the addPullRequestReviewComment GraphQL mutation (its
-          # inReplyTo argument), NOT the REST reply endpoint — the REST endpoint's URL has
-          # a variable segment (the comment id) in the middle of the path, and this Bash
-          # allowlist only supports a trailing wildcard ("prefix:*" = "starts with this
-          # literal text"), not one mid-string, so a REST-shaped allow-pattern for varying
-          # comment ids can never match (confirmed live: 0 replies posted, silently denied
-          # every time). GraphQL avoids this because the whole call is already covered
-          # unconditionally by the existing Bash(gh api graphql:*) entry below.
-          claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api graphql:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
+          # NOTE on the path here: an earlier attempt tried resolveReviewThread via a
+          # dedicated bot PAT (fine-grained PATs don't support that mutation at all —
+          # FORBIDDEN even with correct permissions), then addPullRequestReviewComment
+          # via GraphQL with the default token (also FORBIDDEN — PR-review GraphQL
+          # mutations are broadly blocked for GitHub App-style tokens, which is what the
+          # Actions GITHUB_TOKEN actually is under the hood). REST is what actually works
+          # here — it's how the inline comments below have been posting successfully all
+          # along. The one gotcha: this allowlist's "prefix:*" only supports a *trailing*
+          # wildcard (matches anything after a fixed literal prefix, including further
+          # "/"-segments — same as how Bash(gh api graphql:*) already matches all the
+          # varying query text after it). A pattern with wildcards *before* the trailing
+          # one (e.g. ".../pulls/*/comments/*/replies:*") never matches anything and
+          # silently blocks the call — confirmed live. So the entry below stops the fixed
+          # part at "pulls" and lets everything after it (PR number, comment id, method,
+          # body) vary freely.
+          claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api graphql:*),Bash(gh api repos/${{ github.repository }}/pulls:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
           prompt: |
             Repository: ${{ github.repository }}
             PR number: ${{ github.event.pull_request.number }}
@@ -65,7 +65,7 @@ jobs:
                           id
                           isResolved
                           comments(first: 100) {
-                            nodes { id body path line author { login } }
+                            nodes { databaseId body path line author { login } }
                           }
                         }
                       }
@@ -85,15 +85,10 @@ jobs:
             in the comment body to locate the relevant section instead of relying on the
             exact line number.
 
-              - If the issue is fixed: reply on that thread via GraphQL, using the `id`
-                of its last comment as `inReplyTo` (this call is already covered by the
-                allowed `gh api graphql` prefix, unlike a REST call would be):
-                  gh api graphql -f query='
-                    mutation($commentId: ID!, $body: String!) {
-                      addPullRequestReviewComment(input: { inReplyTo: $commentId, body: $body }) {
-                        comment { id }
-                      }
-                    }' -f commentId="<that comment's id>" -f body="Fixed — looks correct now. I can't resolve this conversation myself; please resolve it if you agree."
+              - If the issue is fixed: reply via the REST endpoint, using the
+                `databaseId` of its last comment (do not use shell pipes or command
+                substitution — only plain `gh api` arguments, exactly as shown):
+                  gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments/<databaseId>/replies -f body="Fixed — looks correct now. I can't resolve this conversation myself; please resolve it if you agree."
                 Do not treat this thread as a bug for Step 3's decision below.
               - If the issue is still present: leave it alone, don't reply, and don't post
                 a duplicate inline comment for it in Step 2 — the existing open thread
