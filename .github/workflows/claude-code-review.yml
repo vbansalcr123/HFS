@@ -73,10 +73,13 @@ jobs:
             in the comment body to locate the relevant section instead of relying on the
             exact line number.
 
-              - If the issue is fixed: resolve the thread using the elevated bot token —
-                  the default token cannot do this and will fail with
+              - If the issue is fixed: resolve the thread using the elevated bot token via
+                  an explicit Authorization header (do NOT use a `GH_TOKEN=... gh ...`
+                  env-var-prefix form — that changes the command's leading token and will
+                  not match the `Bash(gh api graphql:*)` allowlist). The default token
+                  cannot do this and will fail with
                   "FORBIDDEN: Resource not accessible by integration":
-                  GH_TOKEN=$PR_RESOLVE_BOT_TOKEN gh api graphql -f query='
+                  gh api graphql -H "Authorization: token $PR_RESOLVE_BOT_TOKEN" -f query='
                     mutation($threadId: ID!) {
                       resolveReviewThread(input: { threadId: $threadId }) {
                         thread { id isResolved }
