@@ -25,6 +25,14 @@ jobs:
           fetch-depth: 0
 
       - uses: anthropics/claude-code-action@v1
+        env:
+          # Fine-grained PAT for a dedicated bot/service account, scoped to just this repo
+          # with "Pull requests: Read and write". The default GITHUB_TOKEN cannot call the
+          # resolveReviewThread GraphQL mutation (returns FORBIDDEN: Resource not accessible
+          # by integration) even with pull-requests: write — so that one call needs this
+          # elevated token instead. Everything else in this workflow keeps using the default
+          # token.
+          PR_RESOLVE_BOT_TOKEN: ${{ secrets.PR_RESOLVE_BOT_TOKEN }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -65,8 +73,10 @@ jobs:
             in the comment body to locate the relevant section instead of relying on the
             exact line number.
 
-              - If the issue is fixed: resolve the thread —
-                  gh api graphql -f query='
+              - If the issue is fixed: resolve the thread using the elevated bot token —
+                  the default token cannot do this and will fail with
+                  "FORBIDDEN: Resource not accessible by integration":
+                  GH_TOKEN=$PR_RESOLVE_BOT_TOKEN gh api graphql -f query='
                     mutation($threadId: ID!) {
                       resolveReviewThread(input: { threadId: $threadId }) {
                         thread { id isResolved }
