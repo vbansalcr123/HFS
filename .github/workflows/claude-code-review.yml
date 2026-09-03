@@ -28,15 +28,37 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api graphql:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
+          # NOTE on the path here: three prior approaches to acknowledging a fixed thread
+          # all failed for three different, hard reasons — (1) resolveReviewThread via a
+          # dedicated bot PAT: fine-grained PATs don't support that mutation at all
+          # (FORBIDDEN even with correct permissions); (2) addPullRequestReviewComment via
+          # GraphQL with the default token: also FORBIDDEN — PR-review GraphQL mutations
+          # are broadly blocked for GitHub App-style tokens, which is what the Actions
+          # GITHUB_TOKEN actually is; (3) the REST reply endpoint
+          # (.../comments/{id}/replies): not a GitHub permission problem at all this time —
+          # confirmed via a full-output diagnostic run that Claude Code's own Bash
+          # allowlist denied it ("This command requires approval" / auto-rejected
+          # non-interactively). Its "prefix:*" syntax matches whole shell tokens exactly;
+          # a REST URL's variable id sits embedded inside one single contiguous token with
+          # no internal whitespace, so no prefix can ever match every possible value — this
+          # isn't fixable by rephrasing the pattern. `gh pr comment` sidesteps all of this:
+          # it's a fixed, complete, whole-token command (same shape as the already-working
+          # gh pr view/diff/review below) that posts a plain, visible PR-level comment
+          # instead of threading inside the old conversation — a human still has to click
+          # "Resolve conversation" on the original thread, but at least gets a clear
+          # confirmation of what's fixed.
+          claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh pr comment:*),Bash(gh api graphql:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
           prompt: |
             Repository: ${{ github.repository }}
             PR number: ${{ github.event.pull_request.number }}
 
-            ## Step 1: Resolve stale comments from previous runs
+            ## Step 1: Identify stale comments from previous runs that are now fixed
 
             Before reviewing the new diff, check whether any of your own previously-posted
-            inline comments on this PR are now fixed.
+            inline comments on this PR are now fixed. You cannot resolve or reply inside a
+            GitHub review thread itself (no working credential/tool path for that) — the
+            best you can do is call this out in a plain PR comment in Step 1b below, so a
+            human knows it's safe to click "Resolve conversation" on the original thread.
 
             Fetch this PR's review threads:
               gh api graphql -f query='
@@ -48,7 +70,7 @@ jobs:
                           id
                           isResolved
                           comments(first: 100) {
-                            nodes { id body path line author { login } }
+                            nodes { body path line author { login } }
                           }
                         }
                       }
@@ -56,8 +78,11 @@ jobs:
                   }
                 }' -f owner="<owner from Repository above>" -f repo="<repo from Repository above>" -F pr=<PR number above>
 
+            Note: this GraphQL query reports this bot's own login as "github-actions"
+            (no "[bot]" suffix — that suffix only appears via the REST API).
+
             For each thread where isResolved is false AND every comment's author.login is
-            "github-actions[bot]" (skip — never touch — any thread containing even one
+            "github-actions" (skip — never touch — any thread containing even one
             comment from a human reviewer): read the current state of the file at `path`
             (use Read) and judge whether the issue described in the comment body still
             applies to the code on this branch as it stands now. If the file no longer
@@ -65,19 +90,23 @@ jobs:
             in the comment body to locate the relevant section instead of relying on the
             exact line number.
 
-              - If the issue is fixed: resolve the thread —
-                  gh api graphql -f query='
-                    mutation($threadId: ID!) {
-                      resolveReviewThread(input: { threadId: $threadId }) {
-                        thread { id isResolved }
-                      }
-                    }' -f threadId="<that thread's id>"
-              - If the issue is still present: leave the thread open. Do not resolve it,
-                and do not post a duplicate inline comment for it in Step 2 — the
-                existing open thread already covers it.
+              - If the issue is fixed: remember it (file + a short description) for the
+                Step 1b comment below. Do not treat this thread as a bug for Step 3's
+                decision.
+              - If the issue is still present: leave it alone, don't post a duplicate
+                inline comment for it in Step 2 — the existing open thread already covers
+                it. Treat it as a real bug for Step 3's decision below.
 
-            If you're not confident whether an issue is actually fixed, leave the thread
-            open rather than resolving it.
+            If you're not confident whether an issue is actually fixed, treat it as still
+            present rather than listing it as fixed — a later run can revisit it.
+
+            ## Step 1b: Post one plain comment for any fixed threads
+
+            If you found at least one fixed thread above, post exactly ONE plain comment
+            (not an inline/review comment — a normal PR comment) summarizing all of them:
+              gh pr comment ${{ github.event.pull_request.number }} --body "<your summary, e.g. 'Verified fixed: SOQL-in-loop in ScratchReviewBotTest.cls (see the open review thread on that file) — please resolve that conversation if you agree.'>"
+            List every fixed thread's file/issue in that one comment; don't post one per
+            thread. Skip this step entirely if nothing was fixed.
 
             ## Step 2: Review the new diff
 
@@ -108,14 +137,15 @@ jobs:
             without one. --approve does not require a body. Since issues are now
             detailed via inline comments, keep this body to a short summary (e.g.
             "N issue(s) found — see inline comments") rather than restating them. If
-            you resolved any stale threads in Step 1, mention the count in this
-            summary.
+            you posted a Step 1b comment for fixed threads, mention that in this summary.
 
             A "real bug" for this decision means either a new issue found in Step 2,
             OR a thread from Step 1 that you left open because the original issue is
-            still unfixed — leaving a thread open must never lead to --approve.
+            still unfixed — leaving a thread open must never lead to --approve. A thread
+            you listed as fixed in Step 1b does NOT count as a real bug.
             - Real bug found (new or still-unresolved from Step 1):
               `gh pr review --request-changes --body "<summary>"`.
             - No bugs found anywhere (Step 2 clean AND every one of your threads from
-              Step 1 is resolved or was already resolved): `gh pr review --approve`,
-              clearing any earlier "Changes Requested" review of yours on this PR.
+              Step 1 is either already resolved or was confirmed fixed in Step 1):
+              `gh pr review --approve`, clearing any earlier "Changes Requested" review
+              of yours on this PR.
