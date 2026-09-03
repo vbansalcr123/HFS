@@ -25,17 +25,24 @@ jobs:
           fetch-depth: 0
 
       - uses: anthropics/claude-code-action@v1
-        env:
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           # Fine-grained PAT for a dedicated bot/service account, scoped to just this repo
           # with "Pull requests: Read and write". The default GITHUB_TOKEN cannot call the
           # resolveReviewThread GraphQL mutation (returns FORBIDDEN: Resource not accessible
           # by integration) even with pull-requests: write — so that one call needs this
           # elevated token instead. Everything else in this workflow keeps using the default
-          # token.
-          PR_RESOLVE_BOT_TOKEN: ${{ secrets.PR_RESOLVE_BOT_TOKEN }}
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # token. This must go through `settings.env`, NOT a step-level `env:` block — the
+          # latter sets the GitHub Actions step's process environment but is not reliably
+          # passed into Claude Code's own tool-execution environment (confirmed by a live
+          # test run: the step-level env var was unusable from the Bash tool).
+          settings: |
+            {
+              "env": {
+                "PR_RESOLVE_BOT_TOKEN": "${{ secrets.PR_RESOLVE_BOT_TOKEN }}"
+              }
+            }
           claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api graphql:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
           prompt: |
             Repository: ${{ github.repository }}
