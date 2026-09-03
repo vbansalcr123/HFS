@@ -28,8 +28,59 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
+          claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api graphql:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
           prompt: |
+            Repository: ${{ github.repository }}
+            PR number: ${{ github.event.pull_request.number }}
+
+            ## Step 1: Resolve stale comments from previous runs
+
+            Before reviewing the new diff, check whether any of your own previously-posted
+            inline comments on this PR are now fixed.
+
+            Fetch this PR's review threads:
+              gh api graphql -f query='
+                query($owner:String!, $repo:String!, $pr:Int!) {
+                  repository(owner:$owner, name:$repo) {
+                    pullRequest(number:$pr) {
+                      reviewThreads(first: 100) {
+                        nodes {
+                          id
+                          isResolved
+                          comments(first: 100) {
+                            nodes { id body path line author { login } }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }' -f owner="<owner from Repository above>" -f repo="<repo from Repository above>" -F pr=<PR number above>
+
+            For each thread where isResolved is false AND every comment's author.login is
+            "github-actions[bot]" (skip — never touch — any thread containing even one
+            comment from a human reviewer): read the current state of the file at `path`
+            (use Read) and judge whether the issue described in the comment body still
+            applies to the code on this branch as it stands now. If the file no longer
+            exists at that path or the line has shifted, use the quoted code/description
+            in the comment body to locate the relevant section instead of relying on the
+            exact line number.
+
+              - If the issue is fixed: resolve the thread —
+                  gh api graphql -f query='
+                    mutation($threadId: ID!) {
+                      resolveReviewThread(input: { threadId: $threadId }) {
+                        thread { id isResolved }
+                      }
+                    }' -f threadId="<that thread's id>"
+              - If the issue is still present: leave the thread open. Do not resolve it,
+                and do not post a duplicate inline comment for it in Step 2 — the
+                existing open thread already covers it.
+
+            If you're not confident whether an issue is actually fixed, leave the thread
+            open rather than resolving it.
+
+            ## Step 2: Review the new diff
+
             Review the current diff for functional and logic correctness only.
             Do not flag naming conventions, formatting, or general security best
             practices — PMD (Salesforce Code Analyzer) and ESLint already enforce
@@ -40,7 +91,8 @@ jobs:
             diff doesn't include — e.g. an existing Selector/Service class this PR
             didn't touch — to confirm whether a layering rule is actually violated.
 
-            For each concrete issue you find, post one inline comment via
+            For each concrete issue you find that isn't already covered by a
+            still-open thread from Step 1, post one inline comment via
             mcp__github_inline_comment__create_inline_comment BEFORE submitting the
             overall review below — anchor it to the exact file path and the specific
             line number of the changed code (use the new/changed line number as shown
@@ -48,12 +100,22 @@ jobs:
             confirmed: true so it posts immediately. Do not batch all issues into the
             review body — each one gets its own inline comment where it actually lives.
 
+            ## Step 3: Submit the review
+
             Then submit exactly one of the following via `gh pr review`. `gh pr review`
             fails when run non-interactively without a body, so --request-changes
             MUST always include --body "<your summary>" (or -b) — never invoke it
             without one. --approve does not require a body. Since issues are now
             detailed via inline comments, keep this body to a short summary (e.g.
-            "N issue(s) found — see inline comments") rather than restating them.
-            - Real bug found: `gh pr review --request-changes --body "<summary>"`.
-            - No bugs found: `gh pr review --approve`, clearing any earlier
-              "Changes Requested" review of yours on this PR if one exists.
+            "N issue(s) found — see inline comments") rather than restating them. If
+            you resolved any stale threads in Step 1, mention the count in this
+            summary.
+
+            A "real bug" for this decision means either a new issue found in Step 2,
+            OR a thread from Step 1 that you left open because the original issue is
+            still unfixed — leaving a thread open must never lead to --approve.
+            - Real bug found (new or still-unresolved from Step 1):
+              `gh pr review --request-changes --body "<summary>"`.
+            - No bugs found anywhere (Step 2 clean AND every one of your threads from
+              Step 1 is resolved or was already resolved): `gh pr review --approve`,
+              clearing any earlier "Changes Requested" review of yours on this PR.
