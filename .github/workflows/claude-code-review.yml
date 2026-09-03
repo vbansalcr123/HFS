@@ -28,6 +28,11 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # TEMPORARY diagnostic flag — remove once the reply mechanism below is
+          # confirmed working. Compact logging has been hiding the actual tool-call
+          # transcript, so several fixes went in on guesswork; this makes the exact
+          # denial/error visible.
+          show_full_output: true
           # NOTE on the path here: an earlier attempt tried resolveReviewThread via a
           # dedicated bot PAT (fine-grained PATs don't support that mutation at all —
           # FORBIDDEN even with correct permissions), then addPullRequestReviewComment
