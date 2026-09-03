@@ -34,11 +34,16 @@ jobs:
           # don't support that mutation at all (confirmed live: FORBIDDEN even with
           # correct "Pull requests: Read and write" permission), and a classic PAT would
           # be needed instead. Rather than hand the agent a broader credential, we settle
-          # for a reply comment acknowledging the fix — this uses ordinary comment-reply
-          # permissions the default GITHUB_TOKEN already has (same as posting the
-          # original inline comments below), so a human still has to click "Resolve
-          # conversation" but at least gets a clear, visible confirmation it's safe to.
-          claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api graphql:*),Bash(gh api repos/${{ github.repository }}/pulls/*/comments/*/replies:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
+          # for a reply comment acknowledging the fix, using the default GITHUB_TOKEN.
+          # This must go through the addPullRequestReviewComment GraphQL mutation (its
+          # inReplyTo argument), NOT the REST reply endpoint — the REST endpoint's URL has
+          # a variable segment (the comment id) in the middle of the path, and this Bash
+          # allowlist only supports a trailing wildcard ("prefix:*" = "starts with this
+          # literal text"), not one mid-string, so a REST-shaped allow-pattern for varying
+          # comment ids can never match (confirmed live: 0 replies posted, silently denied
+          # every time). GraphQL avoids this because the whole call is already covered
+          # unconditionally by the existing Bash(gh api graphql:*) entry below.
+          claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api graphql:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
           prompt: |
             Repository: ${{ github.repository }}
             PR number: ${{ github.event.pull_request.number }}
@@ -60,7 +65,7 @@ jobs:
                           id
                           isResolved
                           comments(first: 100) {
-                            nodes { id databaseId body path line author { login } }
+                            nodes { id body path line author { login } }
                           }
                         }
                       }
@@ -80,12 +85,15 @@ jobs:
             in the comment body to locate the relevant section instead of relying on the
             exact line number.
 
-              - If the issue is fixed: reply on that thread using the `databaseId` of its
-                last comment (this is the plain REST id — different from the `id` field
-                above, which is a GraphQL node id and won't work here). Do not use any
-                shell pipes or command substitution in this call — only plain `gh api`
-                arguments, exactly as shown, since only that literal command is allowed:
-                  gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments/<databaseId>/replies -f body="Fixed — looks correct now. I can't resolve this conversation myself; please resolve it if you agree."
+              - If the issue is fixed: reply on that thread via GraphQL, using the `id`
+                of its last comment as `inReplyTo` (this call is already covered by the
+                allowed `gh api graphql` prefix, unlike a REST call would be):
+                  gh api graphql -f query='
+                    mutation($commentId: ID!, $body: String!) {
+                      addPullRequestReviewComment(input: { inReplyTo: $commentId, body: $body }) {
+                        comment { id }
+                      }
+                    }' -f commentId="<that comment's id>" -f body="Fixed — looks correct now. I can't resolve this conversation myself; please resolve it if you agree."
                 Do not treat this thread as a bug for Step 3's decision below.
               - If the issue is still present: leave it alone, don't reply, and don't post
                 a duplicate inline comment for it in Step 2 — the existing open thread
