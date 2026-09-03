@@ -1,0 +1,37 @@
+.hfs-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.hfs-chip {
+  font-family: "Public Sans", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #dee1e6;
+  border-radius: 999px;
+  background-color: #ffffff;
+  color: #12283f;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.hfs-chip:hover {
+  border-color: #c8102e;
+}
+
+.hfs-chip:focus-visible {
+  outline: 2px solid #2a6fd1;
+  outline-offset: 2px;
+}
+
+.hfs-chip_active {
+  background-color: #c8102e;
+  border-color: #c8102e;
+  color: #ffffff;
+}

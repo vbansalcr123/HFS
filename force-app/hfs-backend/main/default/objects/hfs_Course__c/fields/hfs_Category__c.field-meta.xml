@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>hfs_Category__c</fullName>
+    <description
+  >Course category used for filtering the training grid.</description>
+    <inlineHelpText>The category this course belongs to.</inlineHelpText>
+    <label>Category</label>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Onboarding</fullName>
+                <default>false</default>
+                <label>Onboarding</label>
+            </value>
+            <value>
+                <fullName>Brand &amp; Standards</fullName>
+                <default>false</default>
+                <label>Brand &amp; Standards</label>
+            </value>
+            <value>
+                <fullName>Payment &amp; Loyalty</fullName>
+                <default>false</default>
+                <label>Payment &amp; Loyalty</label>
+            </value>
+            <value>
+                <fullName>Site Operations</fullName>
+                <default>false</default>
+                <label>Site Operations</label>
+            </value>
+            <value>
+                <fullName>Fuel &amp; Products</fullName>
+                <default>false</default>
+                <label>Fuel &amp; Products</label>
+            </value>
+            <value>
+                <fullName>Compliance</fullName>
+                <default>false</default>
+                <label>Compliance</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>64.0</apiVersion>
+    <isExposed>false</isExposed>
+    <masterLabel>HFS Training Course Grid</masterLabel>
+    <description
+  >Responsive grid of training course cards with an empty state for filtered categories.</description>
+</LightningComponentBundle>

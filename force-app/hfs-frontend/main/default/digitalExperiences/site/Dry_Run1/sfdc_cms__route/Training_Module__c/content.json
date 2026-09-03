@@ -1,0 +1,12 @@
+{
+  "type": "sfdc_cms__route",
+  "title": "Training Module",
+  "contentBody": {
+    "activeViewId": "trainingModule",
+    "configurationTags": [],
+    "pageAccess": "UseParent",
+    "routeType": "custom-training-module",
+    "urlPrefix": "training-module"
+  },
+  "urlName": "training-module"
+}
