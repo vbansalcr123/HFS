@@ -25,33 +25,22 @@ jobs:
           fetch-depth: 0
 
       - uses: anthropics/claude-code-action@v1
+        id: claude_review
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Fine-grained PAT for a dedicated bot/service account, scoped to just this repo
-          # with "Pull requests: Read and write". The default GITHUB_TOKEN cannot call the
-          # resolveReviewThread GraphQL mutation (returns FORBIDDEN: Resource not accessible
-          # by integration) even with pull-requests: write — so that one call needs this
-          # elevated token instead. Everything else in this workflow keeps using the default
-          # token. This must go through `settings.env`, NOT a step-level `env:` block — the
-          # latter sets the GitHub Actions step's process environment but is not reliably
-          # passed into Claude Code's own tool-execution environment (confirmed by a live
-          # test run: the step-level env var was unusable from the Bash tool).
-          settings: |
-            {
-              "env": {
-                "PR_RESOLVE_BOT_TOKEN": "${{ secrets.PR_RESOLVE_BOT_TOKEN }}"
-              }
-            }
           claude_args: '--allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api graphql:*),Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment"'
           prompt: |
             Repository: ${{ github.repository }}
             PR number: ${{ github.event.pull_request.number }}
 
-            ## Step 1: Resolve stale comments from previous runs
+            ## Step 1: Identify stale comments from previous runs that are now fixed
 
             Before reviewing the new diff, check whether any of your own previously-posted
-            inline comments on this PR are now fixed.
+            inline comments on this PR are now fixed. You do NOT have permission to resolve
+            threads yourself — a separate, non-agent workflow step does that afterward based
+            on what you report in Step 3. Your only job here is to correctly identify which
+            ones are fixed.
 
             Fetch this PR's review threads:
               gh api graphql -f query='
@@ -80,24 +69,15 @@ jobs:
             in the comment body to locate the relevant section instead of relying on the
             exact line number.
 
-              - If the issue is fixed: resolve the thread using the elevated bot token via
-                  an explicit Authorization header (do NOT use a `GH_TOKEN=... gh ...`
-                  env-var-prefix form — that changes the command's leading token and will
-                  not match the `Bash(gh api graphql:*)` allowlist). The default token
-                  cannot do this and will fail with
-                  "FORBIDDEN: Resource not accessible by integration":
-                  gh api graphql -H "Authorization: token $PR_RESOLVE_BOT_TOKEN" -f query='
-                    mutation($threadId: ID!) {
-                      resolveReviewThread(input: { threadId: $threadId }) {
-                        thread { id isResolved }
-                      }
-                    }' -f threadId="<that thread's id>"
-              - If the issue is still present: leave the thread open. Do not resolve it,
-                and do not post a duplicate inline comment for it in Step 2 — the
-                existing open thread already covers it.
+              - If the issue is fixed: remember this thread's `id` (the GraphQL node id,
+                e.g. "PRRT_...") — you'll list it in Step 3. Do not attempt to call
+                resolveReviewThread yourself; you don't have the credentials for it.
+              - If the issue is still present: leave it alone. Do not post a duplicate
+                inline comment for it in Step 2 — the existing open thread already covers
+                it, and do not include its id in Step 3's list.
 
-            If you're not confident whether an issue is actually fixed, leave the thread
-            open rather than resolving it.
+            If you're not confident whether an issue is actually fixed, do not include it
+            in Step 3's list — a later run can still pick it up.
 
             ## Step 2: Review the new diff
 
@@ -122,20 +102,89 @@ jobs:
 
             ## Step 3: Submit the review
 
-            Then submit exactly one of the following via `gh pr review`. `gh pr review`
-            fails when run non-interactively without a body, so --request-changes
-            MUST always include --body "<your summary>" (or -b) — never invoke it
-            without one. --approve does not require a body. Since issues are now
+            Then submit exactly one of the following via `gh pr review`. Both branches
+            below MUST always include --body "<your summary>" (or -b) — never invoke
+            either without one; this differs from `gh pr review`'s own default (where
+            --approve normally doesn't require a body), because we need the marker line
+            below recorded on every review regardless of verdict. Since issues are now
             detailed via inline comments, keep this body to a short summary (e.g.
-            "N issue(s) found — see inline comments") rather than restating them. If
-            you resolved any stale threads in Step 1, mention the count in this
-            summary.
+            "N issue(s) found — see inline comments") rather than restating them.
+
+            Your --body MUST end with this exact marker line, always present even when
+            empty, so the follow-up workflow step (not you) knows which threads to
+            resolve — a plain comma-separated list of the Step 1 thread ids you judged
+            fixed, or the literal word "none":
+              <!-- resolved-threads: id1,id2 -->
+              <!-- resolved-threads: none -->
 
             A "real bug" for this decision means either a new issue found in Step 2,
             OR a thread from Step 1 that you left open because the original issue is
-            still unfixed — leaving a thread open must never lead to --approve.
+            still unfixed — leaving a thread open must never lead to --approve. A thread
+            you're listing in the marker as fixed does NOT count as a real bug.
             - Real bug found (new or still-unresolved from Step 1):
-              `gh pr review --request-changes --body "<summary>"`.
+              `gh pr review --request-changes --body "<summary>\n\n<marker line>"`.
             - No bugs found anywhere (Step 2 clean AND every one of your threads from
-              Step 1 is resolved or was already resolved): `gh pr review --approve`,
-              clearing any earlier "Changes Requested" review of yours on this PR.
+              Step 1 is either already resolved or listed in the marker as fixed):
+              `gh pr review --approve --body "<summary>\n\n<marker line>"`, clearing
+              any earlier "Changes Requested" review of yours on this PR.
+
+      # Deliberately NOT part of the agent step above. The elevated PR_RESOLVE_BOT_TOKEN
+      # PAT must never be reachable from anything the LLM's prompt controls — Claude Code
+      # scrubs secret-looking env vars from the Bash tool's subprocess for exactly this
+      # reason (a hostile PR diff could otherwise trick the reviewer into leaking it), and
+      # two different attempts to route around that (step-level env:, then settings.env)
+      # both confirmed the scrub blocks it either way. So instead: the agent above only
+      # judges which threads are fixed and reports their ids in a `<!-- resolved-threads:
+      # ... -->` marker on its own review body; this plain, non-agent shell step reads
+      # that marker back with the default token and does the actual resolveReviewThread
+      # call with the PAT — deterministic code, not something adversarial PR content can
+      # influence. It also independently re-verifies each thread (still open, no human
+      # comment) before resolving, rather than trusting the agent's claim blindly.
+      - name: Resolve review threads the bot judged fixed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_RESOLVE_BOT_TOKEN: ${{ secrets.PR_RESOLVE_BOT_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          body=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]")] | last | .body // ""')
+
+          ids=$(printf '%s' "$body" | grep -oP '(?<=<!-- resolved-threads: ).*?(?= -->)' || true)
+
+          if [ -z "$ids" ] || [ "$ids" = "none" ]; then
+            echo "No threads to resolve."
+            exit 0
+          fi
+
+          IFS=',' read -ra thread_ids <<< "$ids"
+          for raw_id in "${thread_ids[@]}"; do
+            tid=$(echo "$raw_id" | xargs)
+            [ -z "$tid" ] && continue
+
+            safe=$(gh api graphql -f query='
+              query($id: ID!) {
+                node(id: $id) {
+                  ... on PullRequestReviewThread {
+                    isResolved
+                    comments(first: 100) { nodes { author { login } } }
+                  }
+                }
+              }' -f id="$tid" \
+              --jq '(.data.node != null) and (.data.node.isResolved == false) and ([.data.node.comments.nodes[].author.login] | all(. == "github-actions[bot]"))')
+
+            if [ "$safe" != "true" ]; then
+              echo "Skipping $tid — failed safety check (missing, already resolved, or has a non-bot comment)."
+              continue
+            fi
+
+            echo "Resolving thread $tid"
+            gh api graphql -H "Authorization: token ${PR_RESOLVE_BOT_TOKEN}" -f query='
+              mutation($threadId: ID!) {
+                resolveReviewThread(input: { threadId: $threadId }) {
+                  thread { id isResolved }
+                }
+              }' -f threadId="$tid"
+          done
