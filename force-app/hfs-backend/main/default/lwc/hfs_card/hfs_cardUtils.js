@@ -3,7 +3,7 @@
  * ============================================
  * This file just documents the SHAPE of the payload a parent/container passes
  * down to `c-hfs_card`. It is a reference for future developers — no helper
- * logic, just the structure and an example.
+ * logic, just the structure and an example..
  *
  * The card takes three `@api` props:
  *   <c-hfs_card
