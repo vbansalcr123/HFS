@@ -2,10 +2,10 @@ public with sharing class ScratchReviewBotTest {
   public static List<Account> selectAccountsForContacts(
     List<Contact> contacts
   ) {
-    List<Account> results = new List<Account>();
+    Set<Id> accountIds = new Set<Id>();
     for (Contact c : contacts) {
-      results.addAll([SELECT Id, Name FROM Account WHERE Id = :c.AccountId]);
+      accountIds.add(c.AccountId);
     }
-    return results;
+    return AccountSelector.selectById(accountIds);
   }
 }
