@@ -61,7 +61,7 @@ jobs:
                 }' -f owner="<owner from Repository above>" -f repo="<repo from Repository above>" -F pr=<PR number above>
 
             For each thread where isResolved is false AND every comment's author.login is
-            "github-actions[bot]" (skip — never touch — any thread containing even one
+            "github-actions" (skip — never touch — any thread containing even one
             comment from a human reviewer): read the current state of the file at `path`
             (use Read) and judge whether the issue described in the comment body still
             applies to the code on this branch as it stands now. If the file no longer
@@ -149,6 +149,10 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Note the login format differs by API: the REST reviews endpoint below returns
+          # "github-actions[bot]", but the GraphQL query further down (for the safety check)
+          # returns the same account as just "github-actions" with no suffix. Confirmed by
+          # a live run where the [bot]-suffixed form silently failed every GraphQL match.
           body=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
             --jq '[.[] | select(.user.login == "github-actions[bot]")] | last | .body // ""')
 
@@ -173,7 +177,7 @@ jobs:
                   }
                 }
               }' -f id="$tid" \
-              --jq '(.data.node != null) and (.data.node.isResolved == false) and ([.data.node.comments.nodes[].author.login] | all(. == "github-actions[bot]"))')
+              --jq '(.data.node != null) and (.data.node.isResolved == false) and ([.data.node.comments.nodes[].author.login] | all(. == "github-actions"))')
 
             if [ "$safe" != "true" ]; then
               echo "Skipping $tid — failed safety check (missing, already resolved, or has a non-bot comment)."
