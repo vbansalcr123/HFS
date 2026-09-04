@@ -58,7 +58,37 @@ public class hfs_Response {
     } else {
       response.errorCode = fallbackCode;
       response.errorMessage = fallbackMessage;
+      System.debug(
+        LoggingLevel.ERROR,
+        'hfs unexpected error: ' + e.getMessage() + '\n' + e.getStackTraceString()
+      );
     }
+    return response;
+  }
+
+  /**
+   * @description Convenience overload of error(Exception, String, String) for controllers
+   * that don't need a domain-specific fallback - falls back to the domain-neutral
+   * UNEXPECTED_ERROR code and generic message.
+   * @param e the caught exception
+   * @return a populated error hfs_Response
+   */
+  public static hfs_Response error(Exception e) {
+    return error(e, hfs_Constants.UNEXPECTED_ERROR, System.Label.hfs_Msg_Generic_Error);
+  }
+
+  /**
+   * @description Builds an error response from an explicit message and code, for call sites
+   * that already have both in hand rather than a caught exception.
+   * @param message safe-to-display message
+   * @param code machine-readable error code
+   * @return a populated error hfs_Response
+   */
+  public static hfs_Response error(String message, String code) {
+    hfs_Response response = new hfs_Response();
+    response.isSuccess = false;
+    response.errorMessage = message;
+    response.errorCode = code;
     return response;
   }
 }

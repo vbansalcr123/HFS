@@ -133,4 +133,188 @@
     >Domain-neutral message for an unexpected system error</shortDescription>
         <value>Something went wrong. Please try again later.</value>
     </labels>
+    <labels>
+        <fullName>hfs_Button_Register</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Register button label</shortDescription>
+        <value>Register</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Config_Missing</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Config missing error</shortDescription>
+        <value>Registration is not fully configured. Please contact the portal administrator.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Duplicate_Email</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Duplicate email error</shortDescription>
+        <value>An account already exists for this email or username. Please sign in or reset your password.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Provisioning_Failed</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Provisioning failed error</shortDescription>
+        <value>We could not complete your registration right now. No account was created. Please try again.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Field_Company</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Company name field label</shortDescription>
+        <value>Company name</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Field_Email</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Email field label</shortDescription>
+        <value>Business email</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Field_Message</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>How can we help field label</shortDescription>
+        <value>How can we help?</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Field_Name</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Name field label</shortDescription>
+        <value>Full name</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Field_Partner_Type</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Partner type field label</shortDescription>
+        <value>Partner type</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Field_Partner_Type_Placeholder</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Partner type placeholder</shortDescription>
+        <value>Select type</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Field_Phone</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Phone number field label</shortDescription>
+        <value>Phone number</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Field_Territory</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Territory / state field label</shortDescription>
+        <value>Territory / State</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Link_Sign_In</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Sign in link</shortDescription>
+        <value>Already have an account? Sign in</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Msg_Check_Email</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Check your email message</shortDescription>
+        <value>Check your email — we have sent you a link to set your password and activate your account.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Msg_Generic_Error</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Generic error message</shortDescription>
+        <value>Something went wrong. Please try again in a moment.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Msg_Invalid_Email</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Invalid email message</shortDescription>
+        <value>Please enter a valid email address.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Msg_Required_Fields</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Required fields message</shortDescription>
+        <value>Please complete all required fields.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Partner_Type_Dealer</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Partner type option: Dealer</shortDescription>
+        <value>Dealer</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Partner_Type_Distributor</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Partner type option: Jobber / distributor</shortDescription>
+        <value>Jobber / distributor</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Register_Hero_Body</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Register hero body</shortDescription>
+        <value>Everything Dealers, Distributors and Unbranded Dealers need — brand assets, requests and training — in one place.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Register_Hero_Title</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Register hero title</shortDescription>
+        <value>Welcome to the Sinclair Partner Portal</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Register_Subtitle</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Register page subtitle</shortDescription>
+        <value>Create your Sinclair Partner Portal account. We will email you a link to set your password and finish setting up.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Register_Title</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Register page title</shortDescription>
+        <value>Request portal access</value>
+    </labels>
 </CustomLabels>

@@ -1,0 +1,139 @@
+/* Sinclair Partner Portal — registration form card (design tokens from Sinclair mockup) */
+:host {
+    --sc-cta: #0b4a28;
+    --sc-cta-hover: #08381e;
+    --sc-body-text: #16202c;
+    --sc-muted: #5a6675;
+    --sc-border: #d6d8d4;
+    --sc-hero: #0a4f2c;
+    display: block;
+    height: 100%;
+}
+
+.auth-form {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 32px;
+    height: 100%;
+    box-sizing: border-box;
+    font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+    color: var(--sc-body-text);
+}
+
+.auth-form__card {
+    width: 100%;
+    max-width: 26rem;
+    background: #ffffff;
+    border: 1px solid var(--sc-border);
+    border-radius: 14px;
+    padding: 36px 34px;
+    box-shadow: 0 10px 30px rgba(22, 32, 44, 0.08);
+}
+
+.auth-form__title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 30px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin: 0 0 6px;
+    color: var(--sc-body-text);
+}
+
+.auth-form__subtitle {
+    font: 400 14px/1.55 'Public Sans', sans-serif;
+    color: var(--sc-muted);
+    margin: 0 0 20px;
+}
+
+.auth-input {
+    display: block;
+    margin-bottom: 16px;
+}
+
+/* Two-column responsive grid mirroring the mockup's span-1 / span-2 layout. */
+.auth-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16px;
+}
+
+.auth-grid__full {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+    .auth-grid {
+        grid-template-columns: 1fr;
+    }
+    .auth-grid__full {
+        grid-column: auto;
+    }
+}
+
+.auth-error {
+    min-height: 4px;
+}
+
+.auth-error__box {
+    background: #fdecea;
+    border: 1px solid #f3b4ae;
+    color: #8a1c13;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font: 500 13px 'Public Sans', sans-serif;
+    margin-bottom: 16px;
+}
+
+.auth-cta {
+    width: 100%;
+    border: 0;
+    cursor: pointer;
+    background: var(--sc-cta);
+    color: #ffffff;
+    font: 700 15px 'Public Sans', sans-serif;
+    padding: 13px 18px;
+    border-radius: 9px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 6px;
+    transition: background 0.15s ease;
+}
+
+.auth-cta:hover:not(:disabled) {
+    background: var(--sc-cta-hover);
+}
+
+.auth-cta:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+}
+
+.auth-link {
+    display: block;
+    width: 100%;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    text-align: center;
+    margin-top: 18px;
+    padding: 6px;
+    font: 600 13.5px 'Public Sans', sans-serif;
+    color: var(--sc-hero);
+}
+
+.auth-link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .auth-form {
+        padding: 24px 16px;
+    }
+    .auth-form__card {
+        padding: 26px 20px;
+    }
+}
