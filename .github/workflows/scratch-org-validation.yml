@@ -241,9 +241,12 @@ jobs:
           ' "$RESULTS_FILE")
 
           # ---- Gate 2: any class under 75% coverage ----
+          # totalLines > 0 excludes classes with nothing to cover (e.g. a constants-only class with
+          # no methods) - those report coveredPercent: 0 from a 0/0 division, which isn't a real
+          # coverage gap and shouldn't fail the gate.
           UNDER_COVERED_MD=$(jq -r '
             [.result.coverage.coverage[]?
-              | select(.coveredPercent < 75)
+              | select(.totalLines > 0 and .coveredPercent < 75)
               | {name, coveredPercent, totalLines, totalCovered}]
             | if length == 0 then "" else
                 (["| Class | Coverage | Covered/Total Lines |", "|-------|----------|---------------------|"] +
@@ -253,7 +256,7 @@ jobs:
               end
           ' "$RESULTS_FILE")
 
-          UNDER_COVERED_COUNT=$(jq '[.result.coverage.coverage[]? | select(.coveredPercent < 75)] | length' "$RESULTS_FILE")
+          UNDER_COVERED_COUNT=$(jq '[.result.coverage.coverage[]? | select(.totalLines > 0 and .coveredPercent < 75)] | length' "$RESULTS_FILE")
 
           # ---- Write step summary (always, pass or fail) ----
           {
