@@ -2,7 +2,7 @@ name: Scratch Org Deploy & Test Validation
 
 on:
   pull_request:
-    branches: [ main, develop, 'release/**' ] # Triggers on PRs targeting main, develop, or any release branch
+    branches: [main, develop, "release/**"] # Triggers on PRs targeting main, develop, or any release branch
     # Default activity types (opened, synchronize, reopened, ...) apply, so every new commit
     # pushed to an open PR re-triggers this workflow, not just the PR's initial creation.
 
@@ -151,6 +151,34 @@ jobs:
           # --duration-days 1 (the shortest allowed) is a self-cleanup safety net: even in the rare
           # case where the "Delete Scratch Org" step never runs, this org auto-expires within a day
           # instead of sitting around consuming Dev Hub scratch-org quota indefinitely.
+
+      # Step 5b: Install the fflib unlocked packages (Apex Enterprise Patterns) this org depends on.
+      # These are our own packages, built from pinned commits of apex-enterprise-patterns'
+      # fflib-apex-mocks (@6889cc0) and fflib-apex-common (@e6f3409) — see packages/apex-mocks and
+      # packages/apex-common in this repo. Installed by Subscriber Package Version Id (04t...)
+      # rather than deployed as source, so this scratch org gets a fixed, versioned dependency
+      # instead of re-vendoring/re-cloning fflib source on every PR run. Neither version has been
+      # promoted (sf package version promote) — that's fine, unpromoted unlocked package versions
+      # install into scratch orgs without restriction; promotion is only required for non-scratch
+      # orgs. apex-mocks installs first: apex-common has no hard dependency on it (verified against
+      # the pinned source), but this keeps install order consistent with sfdx-project.json's
+      # packageDirectories order.
+      - name: Install fflib Packages
+        env:
+          FFLIB_APEX_MOCKS_VERSION_ID: 04tHp000001iKqNIAU # fflib-apex-mocks 0.1.0.1
+          FFLIB_APEX_COMMON_VERSION_ID: 04tHp000001iKqSIAU # fflib-apex-common 0.1.0.1
+        run: |
+          sf package install \
+            --package "$FFLIB_APEX_MOCKS_VERSION_ID" \
+            --target-org "${{ steps.create-scratch.outputs.scratch-alias }}" \
+            --wait 10 \
+            --no-prompt
+
+          sf package install \
+            --package "$FFLIB_APEX_COMMON_VERSION_ID" \
+            --target-org "${{ steps.create-scratch.outputs.scratch-alias }}" \
+            --wait 10 \
+            --no-prompt
 
       # Step 6: Deploy the merged source to the scratch org
       - name: Deploy Source to Scratch Org

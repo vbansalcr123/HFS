@@ -1,0 +1,129 @@
+<template>
+  <article class={cardClass} role="group" aria-label={title}>
+    <!-- 1. Media region (also the "open" affordance) -->
+    <div
+      class="hfs-media"
+      role="button"
+      tabindex="0"
+      aria-label={computedAlt}
+      onclick={handleOpen}
+      onkeydown={handleOpenKeydown}
+    >
+      <template lwc:if={hasImage}>
+        <img class="hfs-media-img" src={imageUrl} alt={computedAlt} />
+      </template>
+      <template lwc:else>
+        <div class="hfs-media-placeholder">
+          <slot name="media"></slot>
+        </div>
+      </template>
+
+      <!-- 1a. NEW pill overlay (top-left) -->
+      <template lwc:if={isNew}>
+        <span class="hfs-new-pill">NEW</span>
+      </template>
+
+      <!-- 1b. Favourite star overlay (top-right, grid mode) -->
+      <template lwc:if={showFavouriteStar}>
+        <button
+          type="button"
+          class="hfs-fav-star"
+          aria-pressed={favouritePressed}
+          title={favouriteLabel}
+          onclick={handleFavourite}
+        >
+          <lightning-icon
+            icon-name="utility:favorite"
+            size="x-small"
+            alternative-text={favouriteLabel}
+            class="hfs-fav-icon"
+          ></lightning-icon>
+        </button>
+      </template>
+    </div>
+
+    <!-- Card body -->
+    <div class="hfs-body">
+      <!-- 2. Category pills -->
+      <template lwc:if={hasCategoryPills}>
+        <div class="hfs-pill-row">
+          <template for:each={categoryPills} for:item="pill">
+            <span key={pill.key} class={pill.cssClass}>{pill.text}</span>
+          </template>
+        </div>
+      </template>
+
+      <!-- 3. Heading -->
+      <h3 class="hfs-heading" onclick={handleOpen}>{title}</h3>
+
+      <!-- 4. Meta section -->
+      <div class="hfs-meta">
+        <slot name="meta">
+          <template for:each={decoratedMetaLines} for:item="line">
+            <p key={line.key} class={line.cssClass}>
+              <template lwc:if={line.warning}>
+                <span class="hfs-warn-glyph" aria-hidden="true">&#9888;</span>
+              </template>
+              {line.text}
+            </p>
+          </template>
+        </slot>
+      </div>
+
+      <!-- 5. Action section -->
+      <div class="hfs-actions">
+        <slot name="actions">
+          <!-- Grid layout: solid Download + outlined Cart buttons -->
+          <template lwc:if={isGrid}>
+            <template lwc:if={showDownload}>
+              <lightning-button
+                class="hfs-btn-download"
+                variant="brand"
+                label={downloadLabel}
+                icon-name="utility:download"
+                disabled={downloadDisabled}
+                onclick={handleDownload}
+              ></lightning-button>
+            </template>
+            <template lwc:if={showCartButton}>
+              <lightning-button
+                class="hfs-btn-cart"
+                variant="neutral"
+                label={cartLabel}
+                icon-name="utility:add"
+                disabled={cartDisabled}
+                onclick={handleAddToCart}
+              ></lightning-button>
+            </template>
+          </template>
+
+          <!-- List layout: compact text links -->
+          <template lwc:else>
+            <template lwc:if={showFavouriteLink}>
+              <button
+                type="button"
+                class="hfs-link hfs-link-fav"
+                aria-pressed={favouritePressed}
+                onclick={handleFavourite}
+              >
+                <span class="hfs-link-glyph" aria-hidden="true">&#9734;</span>
+                Favourite
+              </button>
+            </template>
+            <template lwc:if={showDownload}>
+              <button
+                type="button"
+                class="hfs-link hfs-link-download"
+                disabled={downloadDisabled}
+                onclick={handleDownload}
+              >
+                <span class="hfs-link-glyph" aria-hidden="true">&#8595;</span>
+                {downloadLabel}
+              </button>
+            </template>
+          </template>
+        </slot>
+      </div>
+    </div>
+  </article>
+</template>
