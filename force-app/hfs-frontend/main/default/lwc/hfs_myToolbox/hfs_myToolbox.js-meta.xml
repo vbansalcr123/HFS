@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>64.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>My Toolbox Panel</masterLabel>
+    <description>Always-visible My Toolbox vertical sidebar gathering Quick Actions, My Programs and Account groups for the signed-in user. Drop once into a global/theme region so it appears on every page.</description>
+    <targets>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightningCommunity__Default">
+            <property
+                name="panelTitle"
+                type="String"
+                label="Panel Title"
+                description="Heading shown at the top of the My Toolbox sidebar."
+            />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

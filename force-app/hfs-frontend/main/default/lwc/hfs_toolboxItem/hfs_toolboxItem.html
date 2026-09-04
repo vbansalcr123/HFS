@@ -1,0 +1,27 @@
+<template>
+    <button
+        class="hfs-item"
+        type="button"
+        role="menuitem"
+        aria-label={accessibleLabel}
+        onclick={handleSelect}
+        onkeyup={handleKeyup}
+    >
+        <span class="hfs-item__icon">
+            <lightning-icon
+                icon-name={icon}
+                size="x-small"
+                variant="bare"
+                alternative-text=""
+                aria-hidden="true"
+            ></lightning-icon>
+        </span>
+        <span class="hfs-item__label">{label}</span>
+        <template lwc:if={showCount}>
+            <span class="hfs-item__count" aria-hidden="true">{count}</span>
+        </template>
+        <template lwc:elseif={showUnavailable}>
+            <span class="hfs-item__unavailable" aria-hidden="true">{unavailableText}</span>
+        </template>
+    </button>
+</template>

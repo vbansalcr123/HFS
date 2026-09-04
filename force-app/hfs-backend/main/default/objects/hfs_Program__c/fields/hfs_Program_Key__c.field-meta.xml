@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>hfs_Program_Key__c</fullName>
+    <caseSensitive>false</caseSensitive>
+    <description>Unique key for the program (set to the program name/slug). Enforces one program per name so duplicate catalog rows cannot be created.</description>
+    <externalId>true</externalId>
+    <inlineHelpText>Unique key for this program (typically the program name). Must be unique across all programs.</inlineHelpText>
+    <label>Program Key</label>
+    <length>80</length>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

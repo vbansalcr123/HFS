@@ -1,0 +1,20 @@
+.hfs-group {
+    padding: 8px 0 4px;
+}
+
+.hfs-group__label {
+    font-family: 'Public Sans', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #455963;
+    padding: 10px 16px 6px;
+}
+
+.hfs-group__message {
+    font-family: 'Public Sans', system-ui, sans-serif;
+    font-size: 12.5px;
+    color: #8a9aa8;
+    padding: 4px 16px 10px;
+}

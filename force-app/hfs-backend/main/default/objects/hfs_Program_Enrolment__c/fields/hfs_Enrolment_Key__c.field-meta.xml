@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>hfs_Enrolment_Key__c</fullName>
+    <caseSensitive>false</caseSensitive>
+    <description>Unique Member+Program key (format MemberId:ProgramId). Enforces one enrolment per user per program so a program cannot appear more than once in My Programs.</description>
+    <externalId>true</externalId>
+    <inlineHelpText>Unique key in the format MemberId:ProgramId. Prevents enrolling the same user in the same program twice.</inlineHelpText>
+    <label>Enrolment Key</label>
+    <length>40</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

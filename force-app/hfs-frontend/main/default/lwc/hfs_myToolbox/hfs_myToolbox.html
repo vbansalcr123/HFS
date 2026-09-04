@@ -1,0 +1,78 @@
+<template>
+    <section class={sectionClass} aria-label={resolvedTitle}>
+        <header class="hfs-toolbox__header">
+            <span class="hfs-toolbox__title">{resolvedTitle}</span>
+            <button
+                type="button"
+                class="hfs-toolbox__toggle"
+                title={toggleLabel}
+                aria-label={toggleLabel}
+                aria-expanded={ariaExpanded}
+                onclick={handleToggle}
+            >
+                <lightning-icon
+                    icon-name={toggleIcon}
+                    size="x-small"
+                    alternative-text={toggleLabel}
+                ></lightning-icon>
+            </button>
+        </header>
+
+        <div class="hfs-toolbox__body" lwc:if={isExpanded}>
+            <!-- 1. Quick Actions -->
+            <template lwc:if={quickActionsLoading}>
+                <div class="hfs-toolbox__loading">
+                    <lightning-spinner
+                        alternative-text={labels.loading}
+                        size="small"
+                    ></lightning-spinner>
+                </div>
+            </template>
+            <template lwc:else>
+                <c-hfs_toolbox-group
+                    label={quickActionsLabel}
+                    items={quickActions}
+                    status={quickActionsStatus}
+                    onitemselect={handleItemSelect}
+                ></c-hfs_toolbox-group>
+            </template>
+
+            <!-- 2. My Programs -->
+            <template lwc:if={programsLoading}>
+                <div class="hfs-toolbox__loading">
+                    <lightning-spinner
+                        alternative-text={labels.loading}
+                        size="small"
+                    ></lightning-spinner>
+                </div>
+            </template>
+            <template lwc:else>
+                <c-hfs_toolbox-group
+                    label={myProgramsLabel}
+                    items={programs}
+                    empty-message={programsEmptyMessage}
+                    status={programsStatus}
+                    onitemselect={handleItemSelect}
+                ></c-hfs_toolbox-group>
+            </template>
+
+            <!-- 3. Account -->
+            <template lwc:if={accountLoading}>
+                <div class="hfs-toolbox__loading">
+                    <lightning-spinner
+                        alternative-text={labels.loading}
+                        size="small"
+                    ></lightning-spinner>
+                </div>
+            </template>
+            <template lwc:else>
+                <c-hfs_toolbox-group
+                    label={accountLabel}
+                    items={accountLinks}
+                    status={accountStatus}
+                    onitemselect={handleItemSelect}
+                ></c-hfs_toolbox-group>
+            </template>
+        </div>
+    </section>
+</template>
