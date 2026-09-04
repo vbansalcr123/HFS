@@ -180,6 +180,23 @@ jobs:
             --wait 10 \
             --no-prompt
 
+      # Step 5c: Resolve environment-specific placeholders in metadata that must reference a real
+      # user in the target org — e.g. CustomSite siteAdmin/siteGuestRecordDefaultOwner
+      # (force-app/hfs-frontend/main/default/sites/Dry_Run.site-meta.xml). A scratch org's username
+      # is generated fresh on every create, so it has to be read back from the org itself rather
+      # than from a secret (see the equivalent step in scratch-org-create.yml / deploy.yml). Runs
+      # before "Deploy Source to Scratch Org" so the placeholder is resolved by the time that step
+      # reads force-app off disk.
+      - name: Resolve Target-Org Username Placeholders
+        env:
+          SCRATCH_ALIAS: ${{ steps.create-scratch.outputs.scratch-alias }}
+        run: |
+          TARGET_USERNAME=$(sf org display --target-org "$SCRATCH_ALIAS" --json | jq -r '.result.username')
+
+          grep -rl "__TARGET_USERNAME__" force-app --include="*.site-meta.xml" | while read -r f; do
+            sed -i "s/__TARGET_USERNAME__/$TARGET_USERNAME/g" "$f"
+          done
+
       # Step 6: Deploy the merged source to the scratch org
       - name: Deploy Source to Scratch Org
         run: |
