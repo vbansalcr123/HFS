@@ -1,5 +1,6 @@
 # Org Configuration Runbook — JWT Auth via External Client App (ECA)
-*HFS Salesforce Project — Reference doc — Draft v1*
+
+_HFS Salesforce Project — Reference doc — Draft v1_
 
 ## 0. Purpose & Scope
 
@@ -36,7 +37,7 @@ openssl req -new -x509 -key server.key -out server.crt -days 3650 \
 
 - `server.key` — private key. Goes into GitHub Secrets. **Never commit this anywhere.**
 - `server.crt` — public certificate. Gets uploaded to the ECA in Salesforce.
-- `-days 3650` = ~10 years, matching the existing Dev/QA/UAT certs. See Section 13 (Decision Log) before changing this.
+- `-days 3650` = ~10 years, matching the existing Dev/QA/UAT certs. See Section 14 (Decision Log) before changing this.
 
 ---
 
@@ -102,7 +103,7 @@ sf org login jwt \
   --alias hfs-<env>
 ```
 
-Don't proceed to Step 9 until this succeeds. If it fails, see Section 12 (Troubleshooting) before assuming the GitHub Secrets are the problem.
+Don't proceed to Step 9 until this succeeds. If it fails, see Section 13 (Troubleshooting) before assuming the GitHub Secrets are the problem.
 
 ---
 
@@ -117,14 +118,36 @@ Don't proceed to Step 9 until this succeeds. If it fails, see Section 12 (Troubl
 
 ---
 
-## 10. Step 9 — Clean Up Local Key Material
+## 10. Step 9 — Register the Environment in the Deploy Workflow
+
+Adding the GitHub Environment and its secrets (Step 8) makes the environment exist, but it will **not** show up as a choice in the "Deploy to Environment" Action until the workflow file knows about it — this step is easy to skip and is the most common reason a newly onboarded org "isn't there" when someone goes to run a deploy.
+
+1. Open `.github/workflows/deploy.yml`.
+2. Add the environment's name to the `options:` list under `on.workflow_dispatch.inputs.environment`:
+   ```yaml
+   options:
+     - dev
+     - qa
+     - uat
+     - prod
+     - dev-sandbox
+     - <new-environment-name>
+   ```
+3. The value you add here **must exactly match** (case-sensitive) the GitHub Environment name created in Step 8 — `environment: ${{ inputs.environment }}` in the job is what ties the selected dropdown value back to that Environment's scoped secrets. A mismatch means the job either fails to resolve the environment or silently pulls no secrets.
+4. Check the **"Known coupling to watch for"** comment above the `Validate Deploy (Dry Run)` step in the same file. It hard-codes a check for the literal string `"prod"` to decide `RunLocalTests` (mandatory, org-wide) vs. `RunSpecifiedTests` (scoped to this project). Every environment other than `prod` is currently treated as shared/non-production for that purpose — if the new environment is production-tier, or if it's _not_ shared with other projects and could safely run a narrower test scope, update that condition by hand; it can't be inferred from the org automatically.
+5. Commit the change (PR + merge like any other workflow edit) and confirm the new option now appears in the Actions tab under **Run workflow → Target environment to deploy to**.
+6. Do a first test run against the new environment before considering onboarding complete — see the Definition of Done checklist below.
+
+---
+
+## 11. Step 10 — Clean Up Local Key Material
 
 - [ ] Delete the local `server.key` / `server.crt` working folder once secrets are uploaded, or move it to a secured password manager — don't leave it sitting in a Downloads folder.
 - [ ] Confirm `server.key`/`server.crt` are not tracked by Git (add to `.gitignore` if they were ever generated inside the repo folder).
 
 ---
 
-## 11. Definition of Done
+## 12. Definition of Done
 
 - [ ] ECA created, digital signature enabled, `server.crt` uploaded
 - [ ] OAuth policy set to admin-pre-authorized, Permission Set assigned
@@ -132,40 +155,43 @@ Don't proceed to Step 9 until this succeeds. If it fails, see Section 12 (Troubl
 - [ ] Correct My Domain instance URL identified
 - [ ] `sf org login jwt` succeeds locally
 - [ ] All 4 secrets added to the correct GitHub Environment
+- [ ] Environment name added to the `options:` list in `.github/workflows/deploy.yml` and visible in the Actions dropdown
 - [ ] A test workflow run against this environment completes successfully
 - [ ] Local key material cleaned up / secured
 
 ---
 
-## 12. Troubleshooting
+## 13. Troubleshooting
 
-| Symptom | Likely Cause |
-|---|---|
-| `invalid_grant` | CI user hasn't completed the one-time interactive login (Section 6), or user hasn't been approved for the ECA |
-| `invalid_client_id` | Wrong Consumer Key, or pointing at the wrong ECA |
-| Auth fails only in CI, works locally | `INSTANCE_URL` secret is set to `login.salesforce.com` instead of My Domain |
-| JWT signature invalid | The `.crt` uploaded to the ECA doesn't match the `.key` used to sign the JWT — regenerate the pair together, don't mix and match |
-| Works, then stops working after ~10 years | Certificate expired — see Section 13 tracking table |
+| Symptom                                                                          | Likely Cause                                                                                                                                |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `invalid_grant`                                                                  | CI user hasn't completed the one-time interactive login (Section 6), or user hasn't been approved for the ECA                               |
+| `invalid_client_id`                                                              | Wrong Consumer Key, or pointing at the wrong ECA                                                                                            |
+| Auth fails only in CI, works locally                                             | `INSTANCE_URL` secret is set to `login.salesforce.com` instead of My Domain                                                                 |
+| JWT signature invalid                                                            | The `.crt` uploaded to the ECA doesn't match the `.key` used to sign the JWT — regenerate the pair together, don't mix and match            |
+| Works, then stops working after ~10 years                                        | Certificate expired — see Section 14 tracking table                                                                                         |
+| New environment doesn't appear in the "Target environment to deploy to" dropdown | Step 9 (registering it in `deploy.yml`'s `options:` list) was skipped, or the option name doesn't exactly match the GitHub Environment name |
 
 ---
 
-## 13. Decision Log & Tracking
+## 14. Decision Log & Tracking
 
 **Cert validity — currently defaulting to 10 years**, consistent with existing Dev/QA/UAT certs. This is a real tradeoff, not a settled best practice for this project (see Section 17 of the CI/CD strategy doc, which already flags rotation as an open question):
 
-| | 10-year (current default) | Shorter-lived (1–2 yr) |
-|---|---|---|
-| Ops burden | None after initial setup | Recurring rotation task |
-| Blast radius if key leaks | Valid for a decade | Limited window |
-| Forcing function for review | None | Expiry forces a periodic check-in |
+|                             | 10-year (current default) | Shorter-lived (1–2 yr)            |
+| --------------------------- | ------------------------- | --------------------------------- |
+| Ops burden                  | None after initial setup  | Recurring rotation task           |
+| Blast radius if key leaks   | Valid for a decade        | Limited window                    |
+| Forcing function for review | None                      | Expiry forces a periodic check-in |
 
 **Org tracking table** — log every org configured via this runbook, so expiry isn't invisible even without a formal rotation policy:
 
-| Environment | ECA Name | Created Date | Cert Expiry | Configured By |
-|---|---|---|---|---|
-| Dev | hfs_CI_Dev | | | |
-| QA | hfs_CI_QA | | | |
-| UAT | hfs_CI_UAT | | | |
-| Dev-Sandbox | hfs_CI_Dev-Sandbox | 2026-09-01 | | varun.bansal@criticalriver.com |
+| Environment | ECA Name           | Created Date | Cert Expiry | Configured By                  |
+| ----------- | ------------------ | ------------ | ----------- | ------------------------------ |
+| Dev         | hfs_CI_Dev         |              |             |                                |
+| QA          | hfs_CI_QA          |              |             |                                |
+| UAT         | hfs_CI_UAT         |              |             |                                |
+| Dev-Sandbox | hfs_CI_Dev-Sandbox | 2026-09-01   |             | varun.bansal@criticalriver.com |
+| QA-Sandbox  | hfs_CI_QA-Sandbox  | 2026-09-04   |             | varun.bansal@criticalriver.com |
 
-*(Fill in as orgs are configured/reconfigured against this runbook.)*
+_(Fill in as orgs are configured/reconfigured against this runbook.)_
