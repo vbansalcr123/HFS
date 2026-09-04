@@ -120,6 +120,24 @@ jobs:
           sf org display --target-org target-org --json | jq '{id: .result.id, username: .result.username, instanceUrl: .result.instanceUrl, alias: .result.alias}'
           echo "----------------------------"
 
+      # Step 4.5: Resolve environment-specific placeholders in metadata that must reference a real
+      # user in the target org — e.g. CustomSite siteAdmin/siteGuestRecordDefaultOwner
+      # (force-app/hfs-frontend/main/default/sites/Dry_Run.site-meta.xml), which can't hardcode one
+      # fixed username since the same source deploys to dev/qa/uat/prod/*-sandbox orgs that each
+      # have their own admin/integration user. TARGET_USERNAME is already known from the JWT auth
+      # step above — substituting it here means the checked-in source stays environment-agnostic
+      # instead of needing a hand-edit before every deploy to a different org. Runs before "Compute
+      # Delta" so if a placeholder file is part of this delta, it deploys with the resolved value;
+      # substitution itself doesn't affect what the delta step decides is "changed" (that's computed
+      # from git history between the FROM/TO refs, not from working-tree content).
+      - name: Resolve Target-Org Username Placeholders
+        env:
+          TARGET_USERNAME: ${{ secrets.USERNAME }}
+        run: |
+          grep -rl "__TARGET_USERNAME__" force-app --include="*.site-meta.xml" | while read -r f; do
+            sed -i "s/__TARGET_USERNAME__/$TARGET_USERNAME/g" "$f"
+          done
+
       # Step 5: Compute the delta since the last successful deploy to this environment.
       #
       # --- Delta strategy, end to end ---
