@@ -23,8 +23,8 @@
     <redirectToCustomDomain>false</redirectToCustomDomain>
     <referrerPolicyOriginWhenCrossOrigin>true</referrerPolicyOriginWhenCrossOrigin>
     <selfRegPage>CommunitiesSelfReg</selfRegPage>
-    <siteAdmin>varun.bansal@criticalriver.com</siteAdmin>
-    <siteGuestRecordDefaultOwner>varun.bansal@criticalriver.com</siteGuestRecordDefaultOwner>
+    <siteAdmin>varun.bansal.hfs.deployment@criticalriver.com</siteAdmin>
+    <siteGuestRecordDefaultOwner>varun.bansal.hfs.deployment@criticalriver.com</siteGuestRecordDefaultOwner>
     <siteType>ChatterNetwork</siteType>
     <urlPathPrefix>dryrunvforcesite</urlPathPrefix>
 </CustomSite>
