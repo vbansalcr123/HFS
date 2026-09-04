@@ -22,7 +22,13 @@ public with sharing class hfs_TrainingController {
       );
       return hfs_Response.success(view);
     } catch (Exception e) {
-      return hfs_Response.error(e);
+      // Controller owns its domain fallback for unexpected errors; the shared wrapper
+      // stays domain-neutral. Business exceptions surface their own code/message.
+      return hfs_Response.error(
+        e,
+        hfs_Constants.TRAINING_LOAD_FAILED,
+        System.Label.hfs_Error_Training_Load_Failed
+      );
     }
   }
 }

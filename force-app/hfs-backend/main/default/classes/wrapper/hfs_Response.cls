@@ -35,11 +35,36 @@ public class hfs_Response {
   /**
    * @description Builds an error response from a caught exception. A deliberate business
    * exception (hfs_ApplicationException) surfaces its own message/code; anything else is
-   * treated as an unexpected system error with a safe generic message.
+   * treated as an unexpected system error with a safe, domain-neutral generic message.
+   * Callers needing a domain-specific fallback should use the three-argument overload.
    * @param e the caught exception
    * @return a populated error hfs_Response
    */
   public static hfs_Response error(Exception e) {
+    return error(
+      e,
+      hfs_Constants.UNEXPECTED_ERROR,
+      System.Label.hfs_Error_Unexpected
+    );
+  }
+
+  /**
+   * @description Builds an error response from a caught exception, letting the calling
+   * controller supply its own domain fallback for unexpected (non-business) errors. A
+   * deliberate business exception (hfs_ApplicationException) always surfaces its own
+   * message/code; the fallback applies only to unexpected system-level exceptions. This
+   * keeps the shared wrapper domain-neutral - the error semantics stay with the service's
+   * own controller.
+   * @param e the caught exception
+   * @param fallbackCode machine-readable code to use for an unexpected error
+   * @param fallbackMessage safe-to-display message (from a Custom Label) for an unexpected error
+   * @return a populated error hfs_Response
+   */
+  public static hfs_Response error(
+    Exception e,
+    String fallbackCode,
+    String fallbackMessage
+  ) {
     hfs_Response response = new hfs_Response();
     response.isSuccess = false;
     if (e instanceof hfs_ApplicationException) {
@@ -47,8 +72,8 @@ public class hfs_Response {
       response.errorCode = appEx.errorCode;
       response.errorMessage = e.getMessage();
     } else {
-      response.errorCode = hfs_Constants.TRAINING_LOAD_FAILED;
-      response.errorMessage = System.Label.hfs_Error_Training_Load_Failed;
+      response.errorCode = fallbackCode;
+      response.errorMessage = fallbackMessage;
     }
     return response;
   }

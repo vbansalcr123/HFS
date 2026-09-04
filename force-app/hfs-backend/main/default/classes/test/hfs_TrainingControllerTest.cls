@@ -86,7 +86,6 @@ private class hfs_TrainingControllerTest {
     hfs_ApplicationException ex = new hfs_ApplicationException();
     ex.setMessage('boom');
     ex.setErrorCode(hfs_Constants.TRAINING_LOAD_FAILED);
-    String code = hfs_Constants.trainingLoadFailed();
     Test.stopTest();
 
     System.Assert.areEqual(
@@ -94,6 +93,5 @@ private class hfs_TrainingControllerTest {
       ex.errorCode,
       'Error code should be carried by the exception'
     );
-    System.Assert.isNotNull(code, 'Error code constant should be defined');
   }
 }
