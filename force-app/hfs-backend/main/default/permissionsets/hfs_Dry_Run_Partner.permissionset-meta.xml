@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses>
+        <apexClass>hfs_RegistrationController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <description>Auto-assigned to every self-registered partner User at provisioning (runtime target named in hfs_Registration_Config). Ongoing partner-capability container — layer additional partner permissions here.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Dry Run Partner User</label>
+</PermissionSet>

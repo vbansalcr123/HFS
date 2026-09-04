@@ -1,0 +1,85 @@
+/* Sinclair Partner Portal — brand hero section (design tokens from Sinclair mockup) */
+:host {
+    --sc-hero: #0a4f2c;
+    display: block;
+    height: 100%;
+}
+
+.auth-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 44px 46px;
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: var(--sc-hero);
+    color: #ffffff;
+    font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+}
+
+.auth-hero__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, #0e5c33 0%, #1d6b33 46%, #3e7a2c 100%);
+    z-index: 0;
+}
+
+.auth-hero__top,
+.auth-hero__body,
+.auth-hero__footer {
+    position: relative;
+    z-index: 1;
+}
+
+.auth-hero__eyebrow {
+    font: 600 11.5px 'Public Sans', sans-serif;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.auth-hero__wordmark {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: 0.34em;
+    color: #ffffff;
+    margin-bottom: 18px;
+}
+
+.auth-hero__title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 44px;
+    line-height: 1.04;
+    text-transform: uppercase;
+    color: #fff;
+    margin: 0 0 16px;
+}
+
+.auth-hero__copy {
+    font: 400 15px/1.62 'Public Sans', sans-serif;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+    max-width: 30rem;
+}
+
+.auth-hero__footer {
+    font: 600 11px 'Public Sans', sans-serif;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+@media (max-width: 768px) {
+    .auth-hero {
+        padding: 28px 24px;
+        min-height: 220px;
+        height: auto;
+    }
+    .auth-hero__title {
+        font-size: 32px;
+    }
+}

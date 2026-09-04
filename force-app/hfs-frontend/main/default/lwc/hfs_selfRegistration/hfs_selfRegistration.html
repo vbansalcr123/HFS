@@ -1,0 +1,29 @@
+<template>
+    <div class="auth-shell">
+        <c-hfs_registration-hero
+            hero-title={labels.heroTitle}
+            hero-body={labels.heroBody}>
+        </c-hfs_registration-hero>
+
+        <c-hfs_registration-form
+            is-busy={isBusy}
+            error-message={errorMessage}
+            card-title={labels.title}
+            card-subtitle={labels.subtitle}
+            label-company={labels.fieldCompany}
+            label-name={labels.fieldName}
+            label-phone={labels.fieldPhone}
+            label-email={labels.fieldEmail}
+            label-partner-type={labels.fieldPartnerType}
+            label-partner-type-placeholder={labels.fieldPartnerTypePlaceholder}
+            label-territory={labels.fieldTerritory}
+            label-message={labels.fieldMessage}
+            partner-type-options={partnerTypeOptions}
+            label-register={labels.btnRegister}
+            label-sign-in={labels.linkSignIn}
+            label-required={labels.msgRequired}
+            onsubmit={handleSubmit}
+            onsignin={handleSignIn}>
+        </c-hfs_registration-form>
+    </div>
+</template>

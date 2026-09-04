@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Default</label>
+    <protected>false</protected>
+    <values>
+        <field>Community_Plus_Profile_Name__c</field>
+        <value xsi:type="xsd:string">Customer Community Plus User</value>
+    </values>
+    <values>
+        <field>Partner_Permission_Set_Name__c</field>
+        <value xsi:type="xsd:string">hfs_Dry_Run_Partner</value>
+    </values>
+    <values>
+        <field>Portal_Account_Owner_Username__c</field>
+        <value xsi:type="xsd:string">test-gbg77tj8r39d@example.com</value>
+    </values>
+</CustomMetadata>

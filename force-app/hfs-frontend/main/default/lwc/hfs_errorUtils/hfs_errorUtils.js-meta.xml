@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>64.0</apiVersion>
+    <isExposed>false</isExposed>
+    <masterLabel>HFS Error Utils</masterLabel>
+    <description>Shared hfs_Response parsing and error reduction helpers used by the auth components.</description>
+</LightningComponentBundle>
