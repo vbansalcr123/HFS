@@ -1,0 +1,109 @@
+<template>
+    <div class="auth-form">
+        <div class="auth-form__card">
+            <h2 class="auth-form__title">{cardTitle}</h2>
+            <p class="auth-form__subtitle">{cardSubtitle}</p>
+
+            <div class="auth-error" aria-live="assertive" role="alert">
+                <template lwc:if={hasError}>
+                    <div class="auth-error__box">{errorMessage}</div>
+                </template>
+            </div>
+
+            <div class="auth-grid">
+                <lightning-input
+                    class="auth-input auth-grid__full"
+                    type="text"
+                    data-field="company"
+                    label={labelCompany}
+                    value={company}
+                    required
+                    autocomplete="organization"
+                    onchange={handleCompanyChange}
+                    message-when-value-missing={labelRequired}>
+                </lightning-input>
+
+                <lightning-input
+                    class="auth-input"
+                    type="text"
+                    data-field="name"
+                    label={labelName}
+                    value={name}
+                    required
+                    autocomplete="name"
+                    onchange={handleNameChange}
+                    message-when-value-missing={labelRequired}>
+                </lightning-input>
+
+                <lightning-input
+                    class="auth-input"
+                    type="tel"
+                    data-field="phone"
+                    label={labelPhone}
+                    value={phone}
+                    autocomplete="tel"
+                    onchange={handlePhoneChange}>
+                </lightning-input>
+
+                <lightning-input
+                    class="auth-input auth-grid__full"
+                    type="email"
+                    data-field="email"
+                    label={labelEmail}
+                    value={email}
+                    required
+                    autocomplete="email"
+                    onchange={handleEmailChange}
+                    message-when-value-missing={labelRequired}>
+                </lightning-input>
+
+                <lightning-combobox
+                    class="auth-input"
+                    data-field="partnerType"
+                    label={labelPartnerType}
+                    value={partnerType}
+                    placeholder={labelPartnerTypePlaceholder}
+                    options={partnerTypeOptions}
+                    required
+                    onchange={handlePartnerTypeChange}
+                    message-when-value-missing={labelRequired}>
+                </lightning-combobox>
+
+                <lightning-input
+                    class="auth-input"
+                    type="text"
+                    data-field="territory"
+                    label={labelTerritory}
+                    value={territory}
+                    onchange={handleTerritoryChange}>
+                </lightning-input>
+
+                <lightning-textarea
+                    class="auth-input auth-grid__full"
+                    data-field="message"
+                    label={labelMessage}
+                    value={message}
+                    max-length="2000"
+                    onchange={handleMessageChange}>
+                </lightning-textarea>
+            </div>
+
+            <button
+                class="auth-cta"
+                type="button"
+                onclick={handleSubmit}
+                disabled={isBusy}>
+                <template lwc:if={isBusy}>
+                    <lightning-spinner alternative-text="Loading" size="small" variant="inverse"></lightning-spinner>
+                </template>
+                <template lwc:else>
+                    {labelRegister}
+                </template>
+            </button>
+
+            <button class="auth-link" type="button" onclick={handleSignIn}>
+                {labelSignIn}
+            </button>
+        </div>
+    </div>
+</template>

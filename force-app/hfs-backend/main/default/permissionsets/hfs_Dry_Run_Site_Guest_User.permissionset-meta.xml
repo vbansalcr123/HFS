@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Capability container for the Dry Run site Guest User (anonymous pre-login visitor). Grants no Apex class access — the self-registration controller is granted on the Guest User Profile, not here.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Dry Run Site Guest User</label>
+</PermissionSet>

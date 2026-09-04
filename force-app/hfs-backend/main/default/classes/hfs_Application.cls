@@ -1,12 +1,27 @@
 /**
  * @description Project-wide application factory built on the installed fflib-apex-common
- * framework. Every Selector and Service resolves through this class rather than being
- * instantiated directly, so any layer can be substituted with a mock in tests.
+ * framework. Every Unit of Work, Domain, Selector and Service resolves through this class
+ * rather than being instantiated directly, so any layer can be substituted with a mock in
+ * tests.
  *
  * The fflib factory setMock(...) methods are protected @TestVisible, so this class exposes
  * thin @TestVisible subclasses that surface a public setMock for test code to call.
  */
 public class hfs_Application {
+  /**
+   * Unit of Work factory - declares the SObject types in the order they must be committed
+   * so dependent inserts (e.g. self-registration's Account -> Contact -> User ->
+   * PermissionSetAssignment chain) resolve their parent relationships automatically.
+   */
+  public static final fflib_Application.UnitOfWorkFactory UnitOfWork = new fflib_Application.UnitOfWorkFactory(
+    new List<Schema.SObjectType>{
+      Account.SObjectType,
+      Contact.SObjectType,
+      User.SObjectType,
+      PermissionSetAssignment.SObjectType
+    }
+  );
+
   /** Selector factory - resolves a Selector implementation for an SObjectType. */
   public static final SelectorFactory Selector = new SelectorFactory(
     new Map<SObjectType, Type>{
@@ -14,7 +29,8 @@ public class hfs_Application {
       hfs_CourseProgress__c.SObjectType => hfs_CourseProgressSelector.class,
       hfs_Program_Enrolment__c.SObjectType => hfs_ProgramEnrolmentsSelector.class,
       hfs_Favorite__c.SObjectType => hfs_FavouritesSelector.class,
-      Order.SObjectType => hfs_OrdersSelector.class
+      Order.SObjectType => hfs_OrdersSelector.class,
+      Contact.SObjectType => hfs_ContactsSelector.class
     }
   );
 
@@ -23,6 +39,17 @@ public class hfs_Application {
     new Map<Type, Type>{
       hfs_TrainingService.class => hfs_TrainingServiceImpl.class,
       hfs_ToolboxService.class => hfs_ToolboxServiceImpl.class
+    }
+  );
+
+  /**
+   * Domain factory - resolves a Domain implementation for an SObjectType. Built on the
+   * Selector factory above so domain constructors can be resolved via the same registry.
+   */
+  public static final fflib_Application.DomainFactory Domain = new fflib_Application.DomainFactory(
+    hfs_Application.Selector,
+    new Map<Schema.SObjectType, Type>{
+      Contact.SObjectType => hfs_ContactsDomain.Constructor.class
     }
   );
 

@@ -146,4 +146,53 @@ public class hfs_TestDataFactory {
     insert enrolments;
     return enrolments;
   }
+
+  /**
+   * @description Builds a registration wrapper for the register phase (name + email only;
+   * other fields left null).
+   * @param name registrant name
+   * @param email registrant email
+   * @return the wrapper
+   */
+  public static hfs_RegistrationWrapper buildRegistrationWrapper(
+    String name,
+    String email
+  ) {
+    hfs_RegistrationWrapper w = new hfs_RegistrationWrapper();
+    w.name = name;
+    w.email = email;
+    return w;
+  }
+
+  /**
+   * @description Builds a fully populated registration wrapper mirroring the request-access
+   * form (company, name, phone, email, partner type, territory, message).
+   * @param company company / business name
+   * @param name registrant name
+   * @param phone phone number
+   * @param email registrant email
+   * @param partnerType partner type (Dealer / Distributor)
+   * @param territory territory / state
+   * @param message free-text note
+   * @return the wrapper
+   */
+  public static hfs_RegistrationWrapper buildRegistrationWrapper(
+    String company,
+    String name,
+    String phone,
+    String email,
+    String partnerType,
+    String territory,
+    String message
+  ) {
+    hfs_RegistrationWrapper w = new hfs_RegistrationWrapper();
+    w.company = company;
+    w.name = name;
+    w.phone = phone;
+    w.email = email;
+    w.partnerType = partnerType;
+    w.territory = territory;
+    w.message = message;
+    return w;
+  }
 }

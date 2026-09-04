@@ -1,0 +1,15 @@
+/* Sinclair Partner Portal — registration page shell (two-section split layout) */
+.auth-shell {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 100vh;
+    background: #dfe2e6;
+}
+
+/* Responsive: collapse hero above form under 768px (360–1920 support) */
+@media (max-width: 768px) {
+    .auth-shell {
+        grid-template-columns: 1fr;
+        min-height: auto;
+    }
+}
