@@ -184,6 +184,8 @@ jobs:
             --output-dir .deploy-delta
 
           PACKAGE_XML=".deploy-delta/package/package.xml"
+          SCHEMA_XML=".deploy-delta/package/schema-phase.xml"
+          REST_XML=".deploy-delta/package/rest-phase.xml"
           # DESTRUCTIVE_XML=".deploy-delta/destructiveChanges/destructiveChanges.xml"  # disabled for now — see strategy note above
 
           # Print the exact manifest sfdx-git-delta produced, directly in this step's log —
@@ -199,8 +201,33 @@ jobs:
           echo "------------------------------"
 
           HAS_ADDS="false"
+          HAS_SCHEMA="false"
+          HAS_REST="false"
+
           if [ -f "$PACKAGE_XML" ] && grep -q "<types>" "$PACKAGE_XML"; then
             HAS_ADDS="true"
+
+            # Split the combined manifest into a schema-only phase (CustomObject/CustomField)
+            # and everything else. Why this split exists: see the comment above the "Deploy
+            # Schema (Phase 1 - Real, No Tests)" step below. A separate script (not an inline
+            # heredoc) because this output is fed straight back into "sf project deploy" as real
+            # manifests and needs to be well-formed - unlike the read-only, display-only awk
+            # parsing in "Write Delta Summary" below, a malformed manifest here would break the
+            # actual deploy. python3 is preinstalled on GitHub-hosted ubuntu runners.
+            python3 .github/scripts/split_delta_package.py "$PACKAGE_XML" "$SCHEMA_XML" "$REST_XML"
+
+            if grep -q "<types>" "$SCHEMA_XML"; then
+              HAS_SCHEMA="true"
+            fi
+            if grep -q "<types>" "$REST_XML"; then
+              HAS_REST="true"
+            fi
+
+            echo "--- schema-phase.xml (Phase 1) ---"
+            cat "$SCHEMA_XML"
+            echo "--- rest-phase.xml (Phase 2) ---"
+            cat "$REST_XML"
+            echo "-----------------------------------"
           fi
 
           # HAS_DESTRUCTIVE="false"
@@ -209,6 +236,8 @@ jobs:
           # fi
 
           echo "has-changes=$HAS_ADDS" >> "$GITHUB_OUTPUT"
+          echo "has-schema-changes=$HAS_SCHEMA" >> "$GITHUB_OUTPUT"
+          echo "has-rest-changes=$HAS_REST" >> "$GITHUB_OUTPUT"
           # echo "has-destructive=$HAS_DESTRUCTIVE" >> "$GITHUB_OUTPUT"
 
       # Step 6: Nothing to deploy — record it and stop here (success, no-op). Keeps re-runs against
@@ -233,43 +262,120 @@ jobs:
       - name: Write Delta Summary
         if: steps.delta.outputs.has-changes == 'true'
         run: |
-          PACKAGE_XML=".deploy-delta/package/package.xml"
+          render_table() {
+            awk '
+              /<types>/ { members = "" ; next }
+              /<members>/ {
+                gsub(/<members>|<\/members>/, "");
+                gsub(/^[ \t]+|[ \t]+$/, "");
+                members = members (members == "" ? "" : ", ") $0;
+                next
+              }
+              /<name>/ {
+                gsub(/<name>|<\/name>/, "");
+                gsub(/^[ \t]+|[ \t]+$/, "");
+                print "| " $0 " | " members " |"
+              }
+            ' "$1"
+          }
 
-          COMPONENT_ROWS=$(awk '
-            /<types>/ { members = "" ; next }
-            /<members>/ {
-              gsub(/<members>|<\/members>/, "");
-              gsub(/^[ \t]+|[ \t]+$/, "");
-              members = members (members == "" ? "" : ", ") $0;
-              next
-            }
-            /<name>/ {
-              gsub(/<name>|<\/name>/, "");
-              gsub(/^[ \t]+|[ \t]+$/, "");
-              print "| " $0 " | " members " |"
-            }
-          ' "$PACKAGE_XML")
-
-          TOTAL_TYPES=$(grep -c "<name>" "$PACKAGE_XML" || echo 0)
-          TOTAL_MEMBERS=$(grep -c "<members>" "$PACKAGE_XML" || echo 0)
+          SCHEMA_XML=".deploy-delta/package/schema-phase.xml"
+          REST_XML=".deploy-delta/package/rest-phase.xml"
 
           {
             echo "## Delta Picked Up for ${{ inputs.environment }}"
             echo ""
-            echo "Diffing \`${{ steps.delta.outputs.from }}\` → \`${{ steps.delta.outputs.to }}\`: $TOTAL_MEMBERS component(s) across $TOTAL_TYPES metadata type(s)."
+            echo "Diffing \`${{ steps.delta.outputs.from }}\` → \`${{ steps.delta.outputs.to }}\`."
             echo ""
-            echo "| Metadata Type | Members |"
-            echo "|---------------|---------|"
-            echo "$COMPONENT_ROWS"
+
+            if [ "${{ steps.delta.outputs.has-schema-changes }}" = "true" ]; then
+              SCHEMA_TYPES=$(grep -c "<name>" "$SCHEMA_XML" || echo 0)
+              SCHEMA_MEMBERS=$(grep -c "<members>" "$SCHEMA_XML" || echo 0)
+              echo "### Phase 1 — Schema ($SCHEMA_MEMBERS component(s) across $SCHEMA_TYPES type(s))"
+              echo ""
+              echo "| Metadata Type | Members |"
+              echo "|---------------|---------|"
+              render_table "$SCHEMA_XML"
+              echo ""
+            else
+              echo "### Phase 1 — Schema"
+              echo "No CustomObject/CustomField changes in this delta — phase 1 will be skipped."
+              echo ""
+            fi
+
+            if [ "${{ steps.delta.outputs.has-rest-changes }}" = "true" ]; then
+              REST_TYPES=$(grep -c "<name>" "$REST_XML" || echo 0)
+              REST_MEMBERS=$(grep -c "<members>" "$REST_XML" || echo 0)
+              echo "### Phase 2 — Everything Else ($REST_MEMBERS component(s) across $REST_TYPES type(s))"
+              echo ""
+              echo "| Metadata Type | Members |"
+              echo "|---------------|---------|"
+              render_table "$REST_XML"
+            else
+              echo "### Phase 2 — Everything Else"
+              echo "No non-schema changes in this delta — phase 2 will be skipped."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Step 8: Validate the delta against the target org — compiles everything in package.xml and
-      # runs the required Apex tests, but commits NOTHING. Whether this passes or fails, the org is
-      # untouched; it exists purely to answer "would this deploy succeed" before anything real
-      # happens, on top of the atomic rollback Salesforce deploys already guarantee. On success, the
-      # JSON result carries a job id (result.id) that the next step redeems via quick deploy.
-      # continue-on-error lets the coverage-gate step below still parse and report on a failed
-      # validation's JSON output.
+      # Step 8: Deploy schema (CustomObject/CustomField) for real, before anything tries to test
+      # against it.
+      #
+      # --- Why a schema phase exists ---
+      # Confirmed on a real failed run (validate job 0AfDQ000009g22p0AA, 2026-09-04): a delta that
+      # bundles brand-new CustomObjects/CustomFields together with Apex test classes that depend on
+      # that schema (query/insert it, etc.) validated cleanly (numberComponentErrors: 0,
+      # runTestsEnabled: true) but ran ZERO tests (numTestsRun: 0). Because a checkOnly validate
+      # never actually commits anything, the schema never truly exists mid-transaction for the test
+      # run to execute against - Salesforce silently skips the tests rather than erroring. Salesforce
+      # then refuses to Quick Deploy a validation that ran zero tests (CannotQuickDeployError:
+      # "Source validate did not run tests in the org"), so nothing ever lands. Deploying schema for
+      # real first means Phase 2's Apex/tests validate against schema that genuinely exists.
+      #
+      # test-level NoTestRun is safe here: schema-only changes (CustomObject/CustomField) don't
+      # themselves carry Apex test coverage requirements - Phase 2 below still runs the full suite
+      # against everything else.
+      #
+      # Deliberately NOT continue-on-error: if real schema can't be deployed, Phase 2 (which may
+      # depend on it) must not be attempted - the job stops here.
+      - name: Deploy Schema (Phase 1 - Real, No Tests)
+        id: schema-deploy
+        if: steps.delta.outputs.has-schema-changes == 'true'
+        run: |
+          mkdir -p deploy-results
+
+          set +e
+          sf project deploy start \
+            --manifest .deploy-delta/package/schema-phase.xml \
+            --target-org target-org \
+            --test-level NoTestRun \
+            --wait 30 \
+            --json > deploy-results/schema-deploy-result.json
+          SCHEMA_DEPLOY_EXIT_CODE=$?
+          set -e
+
+          echo "--- sf project deploy start (schema) exited $SCHEMA_DEPLOY_EXIT_CODE ---"
+          cat deploy-results/schema-deploy-result.json
+          echo "-----------------------------------------------------------------------"
+
+          {
+            echo "## Phase 1 — Schema Deploy Result — ${{ inputs.environment }}"
+            echo ""
+            if [ "$SCHEMA_DEPLOY_EXIT_CODE" -eq 0 ]; then
+              echo "✅ Schema (CustomObject/CustomField) deployed successfully."
+            else
+              echo "❌ Schema deploy failed — stopping before Phase 2. See the job log / uploaded diagnostics for details."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit $SCHEMA_DEPLOY_EXIT_CODE
+
+      # Step 9: Validate the Phase 2 delta (everything except schema) against the target org —
+      # compiles it and runs the required Apex tests, but commits NOTHING. Whether this passes or
+      # fails, the org is untouched; it exists purely to answer "would this deploy succeed" before
+      # anything real happens, on top of the atomic rollback Salesforce deploys already guarantee.
+      # On success, the JSON result carries a job id (result.id) that the next step redeems via
+      # quick deploy. continue-on-error lets the coverage-gate step below still parse and report on
+      # a failed validation's JSON output.
       #
       # Destructive changes (deletions) are disabled for now — deleted metadata in force-app won't be
       # removed from the target org by this workflow. To re-enable: uncomment the HAS_DESTRUCTIVE /
@@ -279,21 +385,16 @@ jobs:
       # --- Test scoping: always RunLocalTests ---
       # Previously used RunSpecifiedTests for dev/qa/uat (scoped to this project's own @isTest
       # classes, to stay isolated from other projects sharing those orgs) with RunLocalTests
-      # reserved for prod. Removed: against this org/CLI combination, `sf project deploy validate`
-      # with RunSpecifiedTests was silently executing zero tests (numTestsRun: 0, empty
-      # successes/failures) even with valid --tests args and a clean metadata validation - and
-      # Salesforce refuses to Quick Deploy a validation that ran zero tests
-      # (CannotQuickDeployError: "Source validate did not run tests in the org"). That made every
-      # non-prod Quick Deploy fail while the workflow's own report-fallback logic misread it as a
-      # success (see the "Enforce Deploy & Coverage Gates" step) - so real deploys were never
-      # landing. RunLocalTests is guaranteed by Salesforce to actually execute tests (prod already
-      # relied on this), which sidesteps the issue entirely rather than papering over it. The
-      # shared-org test isolation this trades away can be reinstated later if someone root-causes
-      # the RunSpecifiedTests behavior (e.g. reproduce with SF_LOG_LEVEL=debug against a real org)
-      # and verifies tests actually run before relying on it again.
-      - name: Validate Deploy (Dry Run)
+      # reserved for prod. Removed: RunSpecifiedTests was ALSO hitting the zero-tests-run problem
+      # described above (independent of the schema-timing issue - both test levels are equally
+      # affected by it), so there was no test-level choice alone that fixed non-prod Quick Deploy;
+      # the schema/rest split above is the actual fix. RunLocalTests is kept as the simpler,
+      # guaranteed-correct choice now that schema exists for real before Phase 2 runs. The
+      # shared-org test isolation RunSpecifiedTests offered can be reinstated later if desired, now
+      # that the real blocker (schema timing) is fixed.
+      - name: Validate Deploy (Phase 2 - Dry Run)
         id: validate
-        if: steps.delta.outputs.has-changes == 'true'
+        if: steps.delta.outputs.has-rest-changes == 'true'
         continue-on-error: true
         run: |
           mkdir -p deploy-results
@@ -312,7 +413,7 @@ jobs:
           # "exit $VALIDATE_EXIT_CODE" at the end of this step.
           set +e
           sf project deploy validate \
-            --manifest .deploy-delta/package/package.xml \
+            --manifest .deploy-delta/package/rest-phase.xml \
             --target-org target-org \
             --test-level "$TEST_LEVEL" \
             "${TEST_ARGS[@]}" \
@@ -330,12 +431,16 @@ jobs:
 
           exit $VALIDATE_EXIT_CODE
 
-      # Step 9: Commit the already-validated deploy — only runs if validation above succeeded. This
-      # redeems that validation's job id rather than re-submitting the manifest, which is what "quick
-      # deploy" means: Salesforce commits the exact result it already compiled and tested, without
-      # running Apex tests a second time. Must happen within 10 days of a successful validation
-      # (never a concern within a single workflow run). continue-on-error so the gate step below can
-      # still report clearly if this specific step is what failed.
+      # Step 10: Commit the already-validated Phase 2 deploy — only runs if validation above
+      # succeeded. This redeems that validation's job id rather than re-submitting the manifest,
+      # which is what "quick deploy" means: Salesforce commits the exact result it already compiled
+      # and tested, without running Apex tests a second time. Must happen within 10 days of a
+      # successful validation (never a concern within a single workflow run). continue-on-error so
+      # the gate step below can still report clearly if this specific step is what failed - but the
+      # step itself must still exit non-zero on a real failure (see "exit $QUICK_DEPLOY_EXIT_CODE"
+      # at the end) so its own outcome in the Actions UI is accurate, even though nothing downstream
+      # currently keys off steps.deploy.outcome directly (the gate step re-derives success from the
+      # JSON files independently).
       #
       # Known failure mode this guards against: "sf project deploy quick" can itself error out
       # (e.g. --wait 30 timing out mid-poll, or a transient network blip) AFTER Salesforce has
@@ -346,9 +451,9 @@ jobs:
       # Deployment Status showed the deploy had succeeded). So after the submitting call, always
       # follow up with "sf project deploy report" to ask Salesforce directly for the deploy
       # request's real final status, and treat THAT as authoritative in the gate step below.
-      - name: Quick Deploy Validated Changes
+      - name: Quick Deploy Validated Changes (Phase 2)
         id: deploy
-        if: steps.delta.outputs.has-changes == 'true' && steps.validate.outcome == 'success'
+        if: steps.delta.outputs.has-rest-changes == 'true' && steps.validate.outcome == 'success'
         continue-on-error: true
         run: |
           set +e
@@ -376,17 +481,21 @@ jobs:
           cat deploy-results/quick-deploy-report.json
           echo "-------------------------------------------------------------"
 
-      # Step 10: Report on both stages and enforce our stricter, per-class 75% coverage minimum on
-      # top of Salesforce's own org-wide check (same 75% bar used in scratch-org-validation.yml's PR
-      # gate). Test/coverage data always comes from the *validate* step's JSON, since that's where
-      # Apex tests actually ran — the quick-deploy step reuses those results rather than re-running
-      # tests. Note: by the time this step runs, a successful quick deploy has already landed in the
-      # target org — Salesforce deploys are transactional, so failing this step for a per-class
-      # shortfall marks the run red for visibility and blocks the tracking-tag update below, but it
-      # can't itself undo metadata that already deployed cleanly.
-      - name: Enforce Deploy & Coverage Gates
+          exit $QUICK_DEPLOY_EXIT_CODE
+
+      # Step 11: Report on both Phase 2 stages and enforce our stricter, per-class 75% coverage
+      # minimum on top of Salesforce's own org-wide check (same 75% bar used in
+      # scratch-org-validation.yml's PR gate). Test/coverage data always comes from the *validate*
+      # step's JSON, since that's where Apex tests actually ran — the quick-deploy step reuses those
+      # results rather than re-running tests. Note: by the time this step runs, a successful quick
+      # deploy has already landed in the target org — Salesforce deploys are transactional, so
+      # failing this step for a per-class shortfall marks the run red for visibility and blocks the
+      # tracking-tag update below, but it can't itself undo metadata that already deployed cleanly.
+      # If reached at all, Phase 1 (schema) already either succeeded or was skipped (no schema
+      # changes in this delta) — a real Phase 1 failure stops the job before this step ever runs.
+      - name: Enforce Deploy & Coverage Gates (Phase 2)
         id: enforce-gates
-        if: steps.delta.outputs.has-changes == 'true'
+        if: steps.delta.outputs.has-rest-changes == 'true'
         run: |
           # Field names below (result.status, result.success, result.details.runTestResult.*) match
           # the metadata Deploy API's current shape as surfaced by "sf project deploy validate --json";
@@ -465,9 +574,15 @@ jobs:
             | length
           ' "$VALIDATE_RESULTS_FILE")
 
+          SCHEMA_PHASE_NOTE="skipped (no schema changes in this delta)"
+          if [ "${{ steps.delta.outputs.has-schema-changes }}" = "true" ]; then
+            SCHEMA_PHASE_NOTE="✅ deployed"
+          fi
+
           {
             echo "## Deploy Result — ${{ inputs.environment }}"
             echo ""
+            echo "- Phase 1 (schema): $SCHEMA_PHASE_NOTE"
             echo "- Validation status: **$VALIDATE_STATUS** (success: $VALIDATE_SUCCESS)"
             if [ "$VALIDATE_SUCCESS" = "true" ]; then
               if [ "$QUICK_DEPLOY_SUCCESS" = "true" ]; then
@@ -512,17 +627,19 @@ jobs:
           fi
           exit $EXIT_CODE
 
-      # Step 11: Only reached if the gate step above succeeded (a failed step stops the job by
-      # default). Move the tracking tag to the commit that was just deployed — this tag is the only
-      # state the delta computation in Step 5 depends on for next time.
+      # Step 12: Only reached if Phase 1 (schema, if any) and the Phase 2 gate step above both
+      # succeeded (a failed step stops the job by default, and a skipped step doesn't count as a
+      # failure) — so this only runs once everything that needed to deploy for real actually did.
+      # Move the tracking tag to the commit that was just deployed — this tag is the only state the
+      # delta computation in Step 5 depends on for next time.
       - name: Record Successful Deploy
         if: steps.delta.outputs.has-changes == 'true'
         run: |
           git tag -f "deployed-${{ inputs.environment }}" "${{ github.sha }}"
           git push origin "refs/tags/deployed-${{ inputs.environment }}" -f
 
-      # Step 11.5: Persist the full diagnostic bundle (delta package.xml, validate JSON,
-      # quick-deploy JSON, quick-deploy report JSON) as a downloadable artifact, regardless of
+      # Step 12.5: Persist the full diagnostic bundle (delta manifests, schema-deploy JSON, validate
+      # JSON, quick-deploy JSON, quick-deploy report JSON) as a downloadable artifact, regardless of
       # which step failed or whether there were any changes to deploy at all. Without this,
       # deploy-results/ and .deploy-delta/ only ever existed on the ephemeral runner and were gone
       # the moment the job finished — the only way to root-cause a failure after the fact was to
@@ -539,7 +656,7 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      # Step 12: Report success/failure of this deploy to Slack, regardless of outcome (whether
+      # Step 13: Report success/failure of this deploy to Slack, regardless of outcome (whether
       # there were changes to deploy or not, and whether the gate step above passed or failed).
       - name: Notify Slack
         if: always()
