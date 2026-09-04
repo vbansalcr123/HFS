@@ -268,26 +268,11 @@ private class hfs_TrainingServiceImplTest {
       TimeZoneSidKey = 'America/Los_Angeles',
       ProfileId = p.Id
     );
-    insert u;
 
     PermissionSet ps = new PermissionSet(
       Name = 'hfs_TrainingTestFls',
       Label = 'HFS Training Test FLS'
     );
-    insert ps;
-
-    insert new List<ObjectPermissions>{
-      new ObjectPermissions(
-        ParentId = ps.Id,
-        SObjectType = 'hfs_Course__c',
-        PermissionsRead = true
-      ),
-      new ObjectPermissions(
-        ParentId = ps.Id,
-        SObjectType = 'hfs_CourseProgress__c',
-        PermissionsRead = true
-      )
-    };
 
     List<String> readableFields = new List<String>{
       'hfs_Course__c.hfs_Description__c',
@@ -304,24 +289,46 @@ private class hfs_TrainingServiceImplTest {
       'hfs_CourseProgress__c.hfs_CertificateUrl__c',
       'hfs_CourseProgress__c.hfs_LastAccessedDate__c'
     };
-    List<FieldPermissions> fps = new List<FieldPermissions>();
-    for (String field : readableFields) {
-      fps.add(
-        new FieldPermissions(
+
+    // Setup-object DML (User, PermissionSet, *Permissions, PermissionSetAssignment) must be
+    // isolated in its own runAs block, otherwise the later non-setup hfs_Course__c DML in the
+    // same transaction throws MIXED_DML_OPERATION.
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      insert u;
+      insert ps;
+
+      insert new List<ObjectPermissions>{
+        new ObjectPermissions(
           ParentId = ps.Id,
-          SObjectType = field.substringBefore('.'),
-          Field = field,
-          PermissionsRead = true,
-          PermissionsEdit = false
+          SObjectType = 'hfs_Course__c',
+          PermissionsRead = true
+        ),
+        new ObjectPermissions(
+          ParentId = ps.Id,
+          SObjectType = 'hfs_CourseProgress__c',
+          PermissionsRead = true
         )
+      };
+
+      List<FieldPermissions> fps = new List<FieldPermissions>();
+      for (String field : readableFields) {
+        fps.add(
+          new FieldPermissions(
+            ParentId = ps.Id,
+            SObjectType = field.substringBefore('.'),
+            Field = field,
+            PermissionsRead = true,
+            PermissionsEdit = false
+          )
+        );
+      }
+      insert fps;
+
+      insert new PermissionSetAssignment(
+        AssigneeId = u.Id,
+        PermissionSetId = ps.Id
       );
     }
-    insert fps;
-
-    insert new PermissionSetAssignment(
-      AssigneeId = u.Id,
-      PermissionSetId = ps.Id
-    );
     return u;
   }
 
