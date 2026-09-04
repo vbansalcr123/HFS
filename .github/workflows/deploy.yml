@@ -65,7 +65,12 @@ jobs:
       # case, but the piped "y" is what unblocks this.
       - name: Install Salesforce CLI
         run: |
-          npm install -g @salesforce/cli
+          # Pinned rather than @latest: this exact version is what the runs used when the
+          # RunSpecifiedTests/Quick-Deploy investigation above was done. An unpinned install lets
+          # upstream CLI behavior drift silently between runs with no corresponding change in this
+          # repo - bump deliberately (and re-verify a real deploy still lands) rather than
+          # automatically.
+          npm install -g @salesforce/cli@2.147.7
           echo y | sf plugins install sfdx-git-delta --force
 
       # Step 4: Authenticate to the target org using the JWT bearer flow — same pattern already used
@@ -271,27 +276,21 @@ jobs:
       # has-destructive lines in "Compute Delta" above, and add the equivalent
       # --post-destructive-changes flag to both this step and "Quick Deploy Validated Changes" below.
       #
-      # --- Test scoping: dev/qa/uat are shared with other projects ---
-      # RunLocalTests runs every local (non-managed-package) Apex test in the org — not just tests
-      # related to this delta. In a shared org, that means an unrelated project's broken test can
-      # block this deploy, and the coverage-gate step below would report on classes this project
-      # never touched. Salesforce doesn't allow narrowing this for production (prod MUST use
-      # RunLocalTests or RunAllTestsInOrg — there's no way around that platform rule), but for
-      # dev/qa/uat we scope test execution to RunSpecifiedTests, running every @isTest class found
-      # anywhere under force-app — not just ones touched by this specific delta. Restricting to only
-      # delta-touched test files would silently skip regression coverage on unrelated code that
-      # depends on what changed (e.g. editing AccountRatingService.cls without touching
-      # AccountRatingServiceTest.cls) — this runs this project's whole local suite every time
-      # instead, which stays isolated from other projects sharing the org while still catching
-      # regressions test-level scoping to the delta alone would miss.
-      #
-      # Known coupling to watch for: the branch below keys off the literal string "prod", treating
-      # every other environment (dev/qa/uat) as shared/non-production. That's accurate for today's
-      # four environments, but it's an assumption baked into a string comparison, not something this
-      # workflow derives from the org itself — if dev/qa/uat ever stop being shared, or a future
-      # environment is added that's also production-tier (or also shared and needs the narrower
-      # scoping), this condition needs to be updated by hand to match. There's no dynamic way to ask
-      # an org "are you production and/or shared" from the CLI, so this has to be maintained here.
+      # --- Test scoping: always RunLocalTests ---
+      # Previously used RunSpecifiedTests for dev/qa/uat (scoped to this project's own @isTest
+      # classes, to stay isolated from other projects sharing those orgs) with RunLocalTests
+      # reserved for prod. Removed: against this org/CLI combination, `sf project deploy validate`
+      # with RunSpecifiedTests was silently executing zero tests (numTestsRun: 0, empty
+      # successes/failures) even with valid --tests args and a clean metadata validation - and
+      # Salesforce refuses to Quick Deploy a validation that ran zero tests
+      # (CannotQuickDeployError: "Source validate did not run tests in the org"). That made every
+      # non-prod Quick Deploy fail while the workflow's own report-fallback logic misread it as a
+      # success (see the "Enforce Deploy & Coverage Gates" step) - so real deploys were never
+      # landing. RunLocalTests is guaranteed by Salesforce to actually execute tests (prod already
+      # relied on this), which sidesteps the issue entirely rather than papering over it. The
+      # shared-org test isolation this trades away can be reinstated later if someone root-causes
+      # the RunSpecifiedTests behavior (e.g. reproduce with SF_LOG_LEVEL=debug against a real org)
+      # and verifies tests actually run before relying on it again.
       - name: Validate Deploy (Dry Run)
         id: validate
         if: steps.delta.outputs.has-changes == 'true'
@@ -299,32 +298,10 @@ jobs:
         run: |
           mkdir -p deploy-results
 
-          # See "Known coupling to watch for" above — this is the literal-string check that decides
-          # RunLocalTests (mandatory, org-wide) vs. RunSpecifiedTests (scoped to this project only).
-          if [ "${{ inputs.environment }}" = "prod" ]; then
-            TEST_LEVEL="RunLocalTests"
-            TEST_ARGS=()
-          else
-            mapfile -t TEST_CLASSES < <(grep -rli "@isTest" force-app --include="*.cls" | xargs -n1 basename -s .cls | sort -u)
-
-            if [ "${#TEST_CLASSES[@]}" -eq 0 ]; then
-              echo "::warning::No @isTest classes found under force-app — falling back to NoTestRun for ${{ inputs.environment }}."
-              TEST_LEVEL="NoTestRun"
-              TEST_ARGS=()
-            else
-              TEST_LEVEL="RunSpecifiedTests"
-              TEST_ARGS=()
-              for CLASS in "${TEST_CLASSES[@]}"; do
-                TEST_ARGS+=(--tests "$CLASS")
-              done
-            fi
-          fi
+          TEST_LEVEL="RunLocalTests"
+          TEST_ARGS=()
 
           echo "--- Test level for ${{ inputs.environment }}: $TEST_LEVEL ---"
-          if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
-            printf '%s\n' "${TEST_CLASSES[@]}"
-          fi
-          echo "-------------------------------------------------------------"
 
           # --json mode makes the CLI suppress ALL human-readable console output, success or
           # failure, and instead write one JSON blob to stdout (redirected below into the results
@@ -436,9 +413,25 @@ jobs:
           # already accepted and completed the deploy (see the comment on "Quick Deploy Validated
           # Changes" above). Fall back to the submitting call's own result only if the report is
           # missing entirely (e.g. the submitting call failed before a job id was even redeemed).
+          #
+          # Critical: a report's "success" alone is NOT proof anything was committed. When
+          # "sf project deploy quick" fails before redeeming the job (e.g. CannotQuickDeployError),
+          # no new deploy job is ever created - "sf project deploy report --job-id <same-id>" then
+          # just re-reports the *original checkOnly validation job's* own status, which is
+          # trivially "success: true" since it already passed validation. That validation job's
+          # checkOnly flag is the tell: checkOnly: true means no real deploy ever happened,
+          # regardless of what "success" says. Only trust the report's success when checkOnly is
+          # false (a real, non-validation deploy job actually exists).
           QUICK_DEPLOY_SUCCESS="false"
+          REPORT_CHECK_ONLY="false"
           if [ -s "$QUICK_DEPLOY_REPORT_FILE" ]; then
-            QUICK_DEPLOY_SUCCESS=$(jq -r '.result.success // false' "$QUICK_DEPLOY_REPORT_FILE")
+            REPORT_CHECK_ONLY=$(jq -r '.result.checkOnly // false' "$QUICK_DEPLOY_REPORT_FILE")
+            if [ "$REPORT_CHECK_ONLY" = "true" ]; then
+              QUICK_DEPLOY_SUCCESS="false"
+              echo "::warning::Quick deploy job was never redeemed (report still shows checkOnly: true) — nothing was committed to the org."
+            else
+              QUICK_DEPLOY_SUCCESS=$(jq -r '.result.success // false' "$QUICK_DEPLOY_REPORT_FILE")
+            fi
           elif [ -s "$QUICK_DEPLOY_RESULTS_FILE" ]; then
             QUICK_DEPLOY_SUCCESS=$(jq -r '.result.success // false' "$QUICK_DEPLOY_RESULTS_FILE")
           fi
@@ -479,6 +472,8 @@ jobs:
             if [ "$VALIDATE_SUCCESS" = "true" ]; then
               if [ "$QUICK_DEPLOY_SUCCESS" = "true" ]; then
                 echo "- Quick deploy: ✅ committed"
+              elif [ "$REPORT_CHECK_ONLY" = "true" ]; then
+                echo "- Quick deploy: ❌ failed — job was never redeemed (still checkOnly); nothing was committed to the org"
               else
                 echo "- Quick deploy: ❌ failed"
               fi
