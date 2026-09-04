@@ -1,0 +1,22 @@
+<template>
+  <template lwc:if={hasCourses}>
+    <div class="hfs-course-grid">
+      <template for:each={courses} for:item="course">
+        <c-hfs_training-course-card
+          key={course.id}
+          course={course}
+        ></c-hfs_training-course-card>
+      </template>
+    </div>
+  </template>
+  <template lwc:else>
+    <div class="hfs-empty" role="status" aria-live="polite">
+      <lightning-icon
+        icon-name="utility:search"
+        size="small"
+        alternative-text={labels.emptyState}
+      ></lightning-icon>
+      <p class="hfs-empty-text">{labels.emptyState}</p>
+    </div>
+  </template>
+</template>

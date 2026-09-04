@@ -1,0 +1,41 @@
+<template>
+  <article class={cardClass} tabindex="0" aria-label={ariaLabel}>
+    <template lwc:if={course.isNewRelease}>
+      <span class="hfs-new-badge">{labels.newBadge}</span>
+    </template>
+
+    <p class="hfs-card-category">{course.category}</p>
+    <h3 class="hfs-card-title">{course.title}</h3>
+
+    <span class={statusChipClass} role="status">{statusLabel}</span>
+
+    <template lwc:if={course.description}>
+      <p class="hfs-card-desc">{course.description}</p>
+    </template>
+
+    <p class="hfs-card-meta">{metaLine}</p>
+
+    <template lwc:if={isInProgress}>
+      <div class="hfs-card-progress">
+        <div
+          class="hfs-card-progress-track"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow={course.percentComplete}
+        >
+          <div class="hfs-card-progress-fill" style={progressStyle}></div>
+        </div>
+        <p class="hfs-card-module">{moduleLine}</p>
+      </div>
+    </template>
+
+    <template lwc:if={isCompleted}>
+      <p class="hfs-card-completion">{completionLine}</p>
+    </template>
+
+    <template lwc:if={dueLine}>
+      <p class={dueClass}>{dueLine}</p>
+    </template>
+  </article>
+</template>

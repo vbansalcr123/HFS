@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
+    <labels>
+        <fullName>hfs_Training_PageTitle</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Training page title</shortDescription>
+        <value>Sinclair Training Library</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_Subtitle</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Training page subtitle</shortDescription>
+        <value>Role-based learning for Dealer &amp; Distributor Partners</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_ProgressHeading</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Progress panel heading</shortDescription>
+        <value>Your Learning Progress</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_ViewCertificates</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>View certificates action</shortDescription>
+        <value>View My Certificates</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_ResumeLastCourse</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Resume last course action</shortDescription>
+        <value>Resume Last Course</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_AllCourses</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>All courses filter chip</shortDescription>
+        <value>All Courses</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_FirstTimeMessage</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>First-time zero state message</shortDescription>
+        <value
+    >You have not started any courses yet. Browse the catalog below to begin.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_EmptyStateMessage</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Empty category state message</shortDescription>
+        <value>No courses are available in this category right now.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_UnavailableMessage</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Training source unavailable message</shortDescription>
+        <value
+    >Training information is temporarily unavailable. Please try again later.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_LoadingMessage</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Loading state message</shortDescription>
+        <value>Loading your training…</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_StatusCompleted</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Completed status label</shortDescription>
+        <value>Completed</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_StatusInProgress</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>In progress status label</shortDescription>
+        <value>In Progress</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_StatusNotStarted</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Not started status label</shortDescription>
+        <value>Not Started</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_NewBadge</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>New release badge</shortDescription>
+        <value>NEW</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Training_Load_Failed</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Error message when training view cannot be built</shortDescription>
+        <value
+    >We could not load your training information. Please try again later.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Unexpected</fullName>
+        <categories>Shared</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Domain-neutral message for an unexpected system error</shortDescription>
+        <value>Something went wrong. Please try again later.</value>
+    </labels>
+</CustomLabels>

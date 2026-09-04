@@ -1,0 +1,48 @@
+<template>
+  <div class="hfs-training-library">
+    <header class="hfs-training-header">
+      <h1 class="hfs-training-title">{labels.pageTitle}</h1>
+      <p class="hfs-training-subtitle">{labels.subtitle}</p>
+    </header>
+
+    <!-- Loading state -->
+    <template lwc:if={isLoading}>
+      <div class="hfs-state" aria-live="polite">
+        <lightning-spinner
+          alternative-text={labels.loading}
+          size="medium"
+        ></lightning-spinner>
+        <p class="hfs-state-text">{labels.loading}</p>
+      </div>
+    </template>
+
+    <!-- Unavailable state -->
+    <template lwc:if={isUnavailable}>
+      <div class="hfs-state hfs-unavailable" role="alert" aria-live="assertive">
+        <lightning-icon
+          icon-name="utility:offline"
+          size="small"
+          alternative-text={labels.unavailable}
+        ></lightning-icon>
+        <p class="hfs-state-text">{labels.unavailable}</p>
+      </div>
+    </template>
+
+    <!-- Loaded content: summary -> filters -> grid (AC4 element order) -->
+    <template lwc:if={hasData}>
+      <c-hfs_training-progress-summary
+        summary={summary}
+      ></c-hfs_training-progress-summary>
+
+      <c-hfs_training-category-filter
+        categories={categories}
+        selected={selectedCategory}
+        oncategorychange={handleCategoryChange}
+      ></c-hfs_training-category-filter>
+
+      <c-hfs_training-course-grid
+        courses={filteredCourses}
+      ></c-hfs_training-course-grid>
+    </template>
+  </div>
+</template>

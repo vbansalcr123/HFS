@@ -1,0 +1,58 @@
+.hfs-progress-panel {
+  background-color: #12283f;
+  color: #ffffff;
+  border-radius: 7px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  font-family: "Public Sans", sans-serif;
+}
+
+.hfs-progress-heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  color: #ffffff;
+}
+
+.hfs-progress-track {
+  width: 100%;
+  height: 10px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.hfs-progress-fill {
+  height: 100%;
+  background-color: #c8102e;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+
+.hfs-progress-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.hfs-progress-line {
+  font-size: 0.95rem;
+  margin: 0;
+  color: #eaf0f6;
+}
+
+.hfs-progress-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .hfs-progress-body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

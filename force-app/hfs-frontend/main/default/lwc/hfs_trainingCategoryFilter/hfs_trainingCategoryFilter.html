@@ -1,0 +1,16 @@
+<template>
+  <div class="hfs-filter" role="group" aria-label="Course categories">
+    <template for:each={chips} for:item="chip">
+      <button
+        key={chip.key}
+        type="button"
+        class={chip.cssClass}
+        data-value={chip.value}
+        aria-pressed={chip.isActive}
+        onclick={handleSelect}
+      >
+        {chip.label}
+      </button>
+    </template>
+  </div>
+</template>

@@ -1,0 +1,42 @@
+<template>
+  <section class="hfs-progress-panel" aria-live="polite">
+    <h2 class="hfs-progress-heading">📚 {labels.heading}</h2>
+
+    <div
+      class="hfs-progress-track"
+      role="progressbar"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow={percentComplete}
+      aria-label={labels.heading}
+    >
+      <div class="hfs-progress-fill" style={progressStyle}></div>
+    </div>
+
+    <div class="hfs-progress-body">
+      <template lwc:if={hasProgress}>
+        <p class="hfs-progress-line">{progressLine}</p>
+      </template>
+      <template lwc:else>
+        <p class="hfs-progress-line">{labels.firstTime}</p>
+      </template>
+
+      <div class="hfs-progress-actions">
+        <lightning-button
+          label={labels.viewCertificates}
+          icon-name="utility:award"
+          variant="neutral"
+          onclick={handleViewCertificates}
+        ></lightning-button>
+        <template lwc:if={canResume}>
+          <lightning-button
+            label={labels.resumeLastCourse}
+            icon-name="utility:play"
+            variant="brand"
+            onclick={handleResume}
+          ></lightning-button>
+        </template>
+      </div>
+    </div>
+  </section>
+</template>
