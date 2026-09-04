@@ -108,6 +108,82 @@ private class hfs_TrainingServiceImplTest {
   }
 
   /**
+   * @description Tier 2 - mocked Selectors. No active courses at all: the summary must default to
+   * a zero percentComplete rather than dividing by zero, and no cards are built.
+   */
+  @IsTest
+  static void buildTrainingView_noCourses_returnsZeroPercentSummary() {
+    Id userId = UserInfo.getUserId();
+    mockSelectors(new List<hfs_Course__c>(), new List<hfs_CourseProgress__c>());
+
+    Test.startTest();
+    hfs_TrainingService service = new hfs_TrainingServiceImpl();
+    hfs_TrainingWrapper view = service.buildTrainingView(userId);
+    Test.stopTest();
+
+    System.Assert.areEqual(0, view.summary.coursesTotal, 'No active courses');
+    System.Assert.areEqual(
+      0,
+      view.summary.percentComplete,
+      'Zero-course summary defaults to 0 percent, avoiding divide-by-zero'
+    );
+    System.Assert.isTrue(
+      view.courses.isEmpty(),
+      'No cards built when there are no courses'
+    );
+  }
+
+  /**
+   * @description Tier 2 - mocked Selectors. A course with no duration and a progress record with
+   * blank status/null percent: the card falls back to Not Started/0% and contributes zero to the
+   * remaining-minutes total instead of throwing.
+   */
+  @IsTest
+  static void buildTrainingView_nullDurationAndBlankProgress_appliesDefaults() {
+    Id userId = UserInfo.getUserId();
+    Id courseId = fakeId(hfs_Course__c.SObjectType, 1);
+
+    List<hfs_Course__c> courses = new List<hfs_Course__c>{
+      new hfs_Course__c(
+        Id = courseId,
+        Name = 'No Duration',
+        hfs_Category__c = 'Compliance'
+      )
+    };
+    List<hfs_CourseProgress__c> progress = new List<hfs_CourseProgress__c>{
+      new hfs_CourseProgress__c(hfs_Course__c = courseId, hfs_User__c = userId)
+    };
+
+    mockSelectors(courses, progress);
+
+    Test.startTest();
+    hfs_TrainingWrapper view = new hfs_TrainingServiceImpl()
+      .buildTrainingView(userId);
+    Test.stopTest();
+
+    hfs_TrainingWrapper.Course card = view.courses[0];
+    System.Assert.areEqual(
+      'Not Started',
+      card.status,
+      'Blank progress status falls back to Not Started'
+    );
+    System.Assert.areEqual(
+      0,
+      card.percentComplete,
+      'Null percentComplete defaults to 0'
+    );
+    System.Assert.isNull(
+      card.durationMinutes,
+      'Null duration stays null on the card'
+    );
+    System.Assert.areEqual(
+      0,
+      view.summary.estRemainingMinutes,
+      'Null duration contributes zero remaining minutes'
+    );
+  }
+
+  /**
    * @description Tier 2 - mocked Selectors. Verifies status derivation, resume target selection,
    * overdue flag, and divide-by-zero-safe percent for an in-progress + completed mix.
    */

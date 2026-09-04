@@ -33,22 +33,6 @@ public class hfs_Response {
   }
 
   /**
-   * @description Builds an error response from a caught exception. A deliberate business
-   * exception (hfs_ApplicationException) surfaces its own message/code; anything else is
-   * treated as an unexpected system error with a safe, domain-neutral generic message.
-   * Callers needing a domain-specific fallback should use the three-argument overload.
-   * @param e the caught exception
-   * @return a populated error hfs_Response
-   */
-  public static hfs_Response error(Exception e) {
-    return error(
-      e,
-      hfs_Constants.UNEXPECTED_ERROR,
-      System.Label.hfs_Error_Unexpected
-    );
-  }
-
-  /**
    * @description Builds an error response from a caught exception, letting the calling
    * controller supply its own domain fallback for unexpected (non-business) errors. A
    * deliberate business exception (hfs_ApplicationException) always surfaces its own

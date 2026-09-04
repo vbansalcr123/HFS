@@ -77,6 +77,46 @@ private class hfs_TrainingControllerTest {
   }
 
   /**
+   * @description Failure path - a mocked Service throws a deliberate business exception
+   * (hfs_ApplicationException). The Controller's fallback code/message must be ignored in
+   * favor of the exception's own error code and message.
+   */
+  @IsTest
+  static void getTraining_serviceThrowsApplicationException_surfacesOwnErrorCode() {
+    fflib_ApexMocks mocks = new fflib_ApexMocks();
+    hfs_TrainingService service = (hfs_TrainingService) mocks.mock(
+      hfs_TrainingService.class
+    );
+    hfs_ApplicationException appEx = new hfs_ApplicationException();
+    appEx.setMessage('Course catalog unavailable');
+    appEx.setErrorCode('COURSE_CATALOG_UNAVAILABLE');
+
+    mocks.startStubbing();
+    mocks.when(service.buildTrainingView(fflib_Match.anyId())).thenThrow(appEx);
+    mocks.stopStubbing();
+    hfs_Application.Service.setMock(hfs_TrainingService.class, service);
+
+    Test.startTest();
+    hfs_Response response = hfs_TrainingController.getTraining();
+    Test.stopTest();
+
+    System.Assert.isFalse(
+      response.isSuccess,
+      'Failure path returns isSuccess = false'
+    );
+    System.Assert.areEqual(
+      'COURSE_CATALOG_UNAVAILABLE',
+      response.errorCode,
+      'Business exception surfaces its own error code, not the fallback'
+    );
+    System.Assert.areEqual(
+      'Course catalog unavailable',
+      response.errorMessage,
+      'Business exception surfaces its own message, not the fallback label'
+    );
+  }
+
+  /**
    * @description Covers the application exception carrier and the constants holder so
    * these low-logic classes contribute to org-wide coverage.
    */
