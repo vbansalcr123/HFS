@@ -144,7 +144,7 @@ jobs:
       # with no special-casing needed anywhere else in this workflow.
       #
       # Destructive changes (deleted metadata) are intentionally NOT handled yet — see the commented-
-      # out block below and in the "Validate Deploy (Dry Run)" step. sfdx-git-delta would also emit
+      # out block below and in the "Deploy Changes (Phase 2 - Real)" step. sfdx-git-delta would also emit
       # .deploy-delta/destructiveChanges/destructiveChanges.xml for anything removed from force-app,
       # but until that's re-enabled, deletions in source won't be reflected in the target orgs.
       #
@@ -369,40 +369,39 @@ jobs:
 
           exit $SCHEMA_DEPLOY_EXIT_CODE
 
-      # Step 9: Validate the Phase 2 delta (everything except schema) against the target org —
-      # compiles it and runs the required Apex tests, but commits NOTHING. Whether this passes or
-      # fails, the org is untouched; it exists purely to answer "would this deploy succeed" before
-      # anything real happens, on top of the atomic rollback Salesforce deploys already guarantee.
-      # On success, the JSON result carries a job id (result.id) that the next step redeems via
-      # quick deploy. continue-on-error lets the coverage-gate step below still parse and report on
-      # a failed validation's JSON output.
+      # Step 9: Deploy the Phase 2 delta (everything except schema) for real - compiles it, runs
+      # the required Apex tests, and commits atomically. Salesforce rolls back the whole deploy if
+      # any test fails or coverage is insufficient - the same guarantee a checkOnly validate would
+      # have given, just without a separate promotion step.
+      #
+      # --- Why this is a single real deploy, not validate-then-quick-deploy ---
+      # Confirmed on a real run (validate job 0AfDQ000009g2340AA, 2026-09-04): even with schema
+      # deployed for real in Phase 1, a checkOnly validate of Apex classes never before committed
+      # to this org reported numberTestsTotal: 0, despite those classes compiling successfully.
+      # RunLocalTests enumerates tests from the org's already-persisted Apex; a checkOnly
+      # transaction never persists anything, so brand-new classes don't count as "local" yet even
+      # though they compile. Salesforce then refuses to Quick Deploy a validation that ran zero
+      # tests. This isn't specific to this one bootstrap case - it recurs for any future delta that
+      # introduces a brand-new Apex class. The validate-then-quick-deploy split exists to preview a
+      # deploy before committing without re-running tests twice; this workflow never actually used
+      # that (it always promoted immediately on validate success), so the split was pure downside
+      # here. A single real deploy sidesteps the entire category of "not yet real for
+      # RunLocalTests" bugs, not just today's case.
       #
       # Destructive changes (deletions) are disabled for now — deleted metadata in force-app won't be
       # removed from the target org by this workflow. To re-enable: uncomment the HAS_DESTRUCTIVE /
       # has-destructive lines in "Compute Delta" above, and add the equivalent
-      # --post-destructive-changes flag to both this step and "Quick Deploy Validated Changes" below.
+      # --post-destructive-changes flag to this step.
       #
-      # --- Test scoping: always RunLocalTests ---
-      # Previously used RunSpecifiedTests for dev/qa/uat (scoped to this project's own @isTest
-      # classes, to stay isolated from other projects sharing those orgs) with RunLocalTests
-      # reserved for prod. Removed: RunSpecifiedTests was ALSO hitting the zero-tests-run problem
-      # described above (independent of the schema-timing issue - both test levels are equally
-      # affected by it), so there was no test-level choice alone that fixed non-prod Quick Deploy;
-      # the schema/rest split above is the actual fix. RunLocalTests is kept as the simpler,
-      # guaranteed-correct choice now that schema exists for real before Phase 2 runs. The
-      # shared-org test isolation RunSpecifiedTests offered can be reinstated later if desired, now
-      # that the real blocker (schema timing) is fixed.
-      - name: Validate Deploy (Phase 2 - Dry Run)
-        id: validate
+      # continue-on-error lets the gate step below still parse and report on a failed deploy's JSON
+      # output; the step itself still exits non-zero on a real failure so its own outcome in the
+      # Actions UI is accurate.
+      - name: Deploy Changes (Phase 2 - Real)
+        id: deploy
         if: steps.delta.outputs.has-rest-changes == 'true'
         continue-on-error: true
         run: |
           mkdir -p deploy-results
-
-          TEST_LEVEL="RunLocalTests"
-          TEST_ARGS=()
-
-          echo "--- Test level for ${{ inputs.environment }}: $TEST_LEVEL ---"
 
           # --json mode makes the CLI suppress ALL human-readable console output, success or
           # failure, and instead write one JSON blob to stdout (redirected below into the results
@@ -410,84 +409,26 @@ jobs:
           # non-zero exit here would silently abort the script with no visible diagnostic at all.
           # set +e/-e around the call preserves the step's real outcome (still fails if this fails)
           # while letting the script continue far enough to print the JSON either way — see the
-          # "exit $VALIDATE_EXIT_CODE" at the end of this step.
+          # "exit $DEPLOY_EXIT_CODE" at the end of this step.
           set +e
-          sf project deploy validate \
+          sf project deploy start \
             --manifest .deploy-delta/package/rest-phase.xml \
             --target-org target-org \
-            --test-level "$TEST_LEVEL" \
-            "${TEST_ARGS[@]}" \
+            --test-level RunLocalTests \
             --wait 30 \
-            --json > deploy-results/validate-result.json
-          VALIDATE_EXIT_CODE=$?
+            --json > deploy-results/deploy-result.json
+          DEPLOY_EXIT_CODE=$?
           set -e
 
-          echo "--- sf project deploy validate exited $VALIDATE_EXIT_CODE ---"
-          cat deploy-results/validate-result.json
-          echo "-------------------------------------------------------------"
+          echo "--- sf project deploy start (phase 2) exited $DEPLOY_EXIT_CODE ---"
+          cat deploy-results/deploy-result.json
+          echo "-----------------------------------------------------------------"
 
-          JOB_ID=$(jq -r '.result.id // empty' deploy-results/validate-result.json)
-          echo "job-id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          exit $DEPLOY_EXIT_CODE
 
-          exit $VALIDATE_EXIT_CODE
-
-      # Step 10: Commit the already-validated Phase 2 deploy — only runs if validation above
-      # succeeded. This redeems that validation's job id rather than re-submitting the manifest,
-      # which is what "quick deploy" means: Salesforce commits the exact result it already compiled
-      # and tested, without running Apex tests a second time. Must happen within 10 days of a
-      # successful validation (never a concern within a single workflow run). continue-on-error so
-      # the gate step below can still report clearly if this specific step is what failed - but the
-      # step itself must still exit non-zero on a real failure (see "exit $QUICK_DEPLOY_EXIT_CODE"
-      # at the end) so its own outcome in the Actions UI is accurate, even though nothing downstream
-      # currently keys off steps.deploy.outcome directly (the gate step re-derives success from the
-      # JSON files independently).
-      #
-      # Known failure mode this guards against: "sf project deploy quick" can itself error out
-      # (e.g. --wait 30 timing out mid-poll, or a transient network blip) AFTER Salesforce has
-      # already accepted and started the deploy — the async job keeps running server-side
-      # regardless of whether the CLI call that submitted it succeeded. Trusting only that call's
-      # own exit code/JSON produces a false "failed" even when the deploy actually lands (seen in
-      # practice against dev-sandbox: this step reported failure while Salesforce Setup ->
-      # Deployment Status showed the deploy had succeeded). So after the submitting call, always
-      # follow up with "sf project deploy report" to ask Salesforce directly for the deploy
-      # request's real final status, and treat THAT as authoritative in the gate step below.
-      - name: Quick Deploy Validated Changes (Phase 2)
-        id: deploy
-        if: steps.delta.outputs.has-rest-changes == 'true' && steps.validate.outcome == 'success'
-        continue-on-error: true
-        run: |
-          set +e
-          sf project deploy quick \
-            --job-id "${{ steps.validate.outputs.job-id }}" \
-            --target-org target-org \
-            --wait 30 \
-            --json > deploy-results/quick-deploy-result.json
-          QUICK_DEPLOY_EXIT_CODE=$?
-          set -e
-
-          echo "--- sf project deploy quick exited $QUICK_DEPLOY_EXIT_CODE ---"
-          cat deploy-results/quick-deploy-result.json
-          echo "-------------------------------------------------------------"
-
-          set +e
-          sf project deploy report \
-            --job-id "${{ steps.validate.outputs.job-id }}" \
-            --target-org target-org \
-            --wait 30 \
-            --json > deploy-results/quick-deploy-report.json
-          set -e
-
-          echo "--- sf project deploy report (authoritative status) ---"
-          cat deploy-results/quick-deploy-report.json
-          echo "-------------------------------------------------------------"
-
-          exit $QUICK_DEPLOY_EXIT_CODE
-
-      # Step 11: Report on both Phase 2 stages and enforce our stricter, per-class 75% coverage
+      # Step 10: Report on the Phase 2 deploy and enforce our stricter, per-class 75% coverage
       # minimum on top of Salesforce's own org-wide check (same 75% bar used in
-      # scratch-org-validation.yml's PR gate). Test/coverage data always comes from the *validate*
-      # step's JSON, since that's where Apex tests actually ran — the quick-deploy step reuses those
-      # results rather than re-running tests. Note: by the time this step runs, a successful quick
+      # scratch-org-validation.yml's PR gate). Note: by the time this step runs, a successful
       # deploy has already landed in the target org — Salesforce deploys are transactional, so
       # failing this step for a per-class shortfall marks the run red for visibility and blocks the
       # tracking-tag update below, but it can't itself undo metadata that already deployed cleanly.
@@ -498,52 +439,21 @@ jobs:
         if: steps.delta.outputs.has-rest-changes == 'true'
         run: |
           # Field names below (result.status, result.success, result.details.runTestResult.*) match
-          # the metadata Deploy API's current shape as surfaced by "sf project deploy validate --json";
+          # the metadata Deploy API's current shape as surfaced by "sf project deploy start --json";
           # like the equivalent gate in scratch-org-validation.yml, re-verify with one manual run if
           # this step ever misbehaves.
-          VALIDATE_RESULTS_FILE="deploy-results/validate-result.json"
-          QUICK_DEPLOY_RESULTS_FILE="deploy-results/quick-deploy-result.json"
-          QUICK_DEPLOY_REPORT_FILE="deploy-results/quick-deploy-report.json"
+          DEPLOY_RESULTS_FILE="deploy-results/deploy-result.json"
 
-          if [ ! -s "$VALIDATE_RESULTS_FILE" ]; then
-            echo "::error::Validation results file missing or empty — sf project deploy validate likely crashed before producing output."
-            echo "## ❌ Validation Failed to Produce Results" >> "$GITHUB_STEP_SUMMARY"
+          if [ ! -s "$DEPLOY_RESULTS_FILE" ]; then
+            echo "::error::Deploy results file missing or empty — sf project deploy start likely crashed before producing output."
+            echo "## ❌ Deploy Failed to Produce Results" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
-          VALIDATE_STATUS=$(jq -r '.result.status // "unknown"' "$VALIDATE_RESULTS_FILE")
-          VALIDATE_SUCCESS=$(jq -r '.result.success // false' "$VALIDATE_RESULTS_FILE")
-          NUM_TESTS_RUN=$(jq -r '.result.details.runTestResult.numTestsRun // 0' "$VALIDATE_RESULTS_FILE")
-          NUM_FAILURES=$(jq -r '.result.details.runTestResult.numFailures // 0' "$VALIDATE_RESULTS_FILE")
-
-          # Prefer the authoritative "deploy report" status (a direct ask to Salesforce for the
-          # deploy request's real final state) over the submitting "deploy quick" call's own
-          # result, since that call can report a false failure if it errors out after Salesforce
-          # already accepted and completed the deploy (see the comment on "Quick Deploy Validated
-          # Changes" above). Fall back to the submitting call's own result only if the report is
-          # missing entirely (e.g. the submitting call failed before a job id was even redeemed).
-          #
-          # Critical: a report's "success" alone is NOT proof anything was committed. When
-          # "sf project deploy quick" fails before redeeming the job (e.g. CannotQuickDeployError),
-          # no new deploy job is ever created - "sf project deploy report --job-id <same-id>" then
-          # just re-reports the *original checkOnly validation job's* own status, which is
-          # trivially "success: true" since it already passed validation. That validation job's
-          # checkOnly flag is the tell: checkOnly: true means no real deploy ever happened,
-          # regardless of what "success" says. Only trust the report's success when checkOnly is
-          # false (a real, non-validation deploy job actually exists).
-          QUICK_DEPLOY_SUCCESS="false"
-          REPORT_CHECK_ONLY="false"
-          if [ -s "$QUICK_DEPLOY_REPORT_FILE" ]; then
-            REPORT_CHECK_ONLY=$(jq -r '.result.checkOnly // false' "$QUICK_DEPLOY_REPORT_FILE")
-            if [ "$REPORT_CHECK_ONLY" = "true" ]; then
-              QUICK_DEPLOY_SUCCESS="false"
-              echo "::warning::Quick deploy job was never redeemed (report still shows checkOnly: true) — nothing was committed to the org."
-            else
-              QUICK_DEPLOY_SUCCESS=$(jq -r '.result.success // false' "$QUICK_DEPLOY_REPORT_FILE")
-            fi
-          elif [ -s "$QUICK_DEPLOY_RESULTS_FILE" ]; then
-            QUICK_DEPLOY_SUCCESS=$(jq -r '.result.success // false' "$QUICK_DEPLOY_RESULTS_FILE")
-          fi
+          DEPLOY_STATUS=$(jq -r '.result.status // "unknown"' "$DEPLOY_RESULTS_FILE")
+          DEPLOY_SUCCESS=$(jq -r '.result.success // false' "$DEPLOY_RESULTS_FILE")
+          NUM_TESTS_RUN=$(jq -r '.result.details.runTestResult.numTestsRun // 0' "$DEPLOY_RESULTS_FILE")
+          NUM_FAILURES=$(jq -r '.result.details.runTestResult.numFailures // 0' "$DEPLOY_RESULTS_FILE")
 
           FAILED_TESTS_MD=$(jq -r '
             [.result.details.runTestResult.failures[]?]
@@ -552,7 +462,7 @@ jobs:
                  (map("| " + (.name // "") + "." + (.methodName // "") + " | " + ((.message // "") | gsub("\\|"; "\\|") | gsub("\n"; " ")) + " |")))
                 | join("\n")
               end
-          ' "$VALIDATE_RESULTS_FILE")
+          ' "$DEPLOY_RESULTS_FILE")
 
           UNDER_COVERED_MD=$(jq -r '
             [.result.details.runTestResult.codeCoverage[]?
@@ -565,14 +475,14 @@ jobs:
                       + ((.numLocations - .numLocationsNotCovered) | tostring) + "/" + (.numLocations | tostring) + " |")))
                 | join("\n")
               end
-          ' "$VALIDATE_RESULTS_FILE")
+          ' "$DEPLOY_RESULTS_FILE")
 
           UNDER_COVERED_COUNT=$(jq '
             [.result.details.runTestResult.codeCoverage[]?
               | select(.numLocations > 0)
               | select((((.numLocations - .numLocationsNotCovered) / .numLocations) * 100) < 75)]
             | length
-          ' "$VALIDATE_RESULTS_FILE")
+          ' "$DEPLOY_RESULTS_FILE")
 
           SCHEMA_PHASE_NOTE="skipped (no schema changes in this delta)"
           if [ "${{ steps.delta.outputs.has-schema-changes }}" = "true" ]; then
@@ -583,17 +493,10 @@ jobs:
             echo "## Deploy Result — ${{ inputs.environment }}"
             echo ""
             echo "- Phase 1 (schema): $SCHEMA_PHASE_NOTE"
-            echo "- Validation status: **$VALIDATE_STATUS** (success: $VALIDATE_SUCCESS)"
-            if [ "$VALIDATE_SUCCESS" = "true" ]; then
-              if [ "$QUICK_DEPLOY_SUCCESS" = "true" ]; then
-                echo "- Quick deploy: ✅ committed"
-              elif [ "$REPORT_CHECK_ONLY" = "true" ]; then
-                echo "- Quick deploy: ❌ failed — job was never redeemed (still checkOnly); nothing was committed to the org"
-              else
-                echo "- Quick deploy: ❌ failed"
-              fi
+            if [ "$DEPLOY_SUCCESS" = "true" ]; then
+              echo "- Phase 2 deploy: ✅ committed (status: $DEPLOY_STATUS)"
             else
-              echo "- Quick deploy: skipped (validation failed — nothing was committed to the org)"
+              echo "- Phase 2 deploy: ❌ failed (status: $DEPLOY_STATUS) — nothing was committed to the org"
             fi
             echo "- Tests ran: $NUM_TESTS_RUN (failing: $NUM_FAILURES)"
             echo ""
@@ -607,22 +510,18 @@ jobs:
               echo "$UNDER_COVERED_MD"
               echo ""
             fi
-            if [ "$VALIDATE_SUCCESS" = "true" ] && [ "$QUICK_DEPLOY_SUCCESS" = "true" ] && [ -z "$UNDER_COVERED_MD" ]; then
+            if [ "$DEPLOY_SUCCESS" = "true" ] && [ -z "$UNDER_COVERED_MD" ]; then
               echo "✅ Deploy succeeded, all tests passed, every touched class meets the 75% per-class coverage minimum."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
           EXIT_CODE=0
-          if [ "$VALIDATE_SUCCESS" != "true" ]; then
-            echo "::error::Validation of the deploy to ${{ inputs.environment }} did not succeed (status: $VALIDATE_STATUS)."
+          if [ "$DEPLOY_SUCCESS" != "true" ]; then
+            echo "::error::Deploy to ${{ inputs.environment }} did not succeed (status: $DEPLOY_STATUS)."
             EXIT_CODE=1
           fi
           if [ "$UNDER_COVERED_COUNT" -gt 0 ]; then
             echo "::error::$UNDER_COVERED_COUNT class(es) touched by this deploy are below 75% coverage."
-            EXIT_CODE=1
-          fi
-          if [ "$VALIDATE_SUCCESS" = "true" ] && [ "$QUICK_DEPLOY_SUCCESS" != "true" ]; then
-            echo "::error::Validation passed but the quick deploy to ${{ inputs.environment }} did not succeed."
             EXIT_CODE=1
           fi
           exit $EXIT_CODE
@@ -638,13 +537,13 @@ jobs:
           git tag -f "deployed-${{ inputs.environment }}" "${{ github.sha }}"
           git push origin "refs/tags/deployed-${{ inputs.environment }}" -f
 
-      # Step 12.5: Persist the full diagnostic bundle (delta manifests, schema-deploy JSON, validate
-      # JSON, quick-deploy JSON, quick-deploy report JSON) as a downloadable artifact, regardless of
-      # which step failed or whether there were any changes to deploy at all. Without this,
-      # deploy-results/ and .deploy-delta/ only ever existed on the ephemeral runner and were gone
-      # the moment the job finished — the only way to root-cause a failure after the fact was to
-      # cross-check Salesforce Setup by hand. if-no-files-found: ignore because both directories
-      # are conditionally created (e.g. never on a no-changes run).
+      # Step 12.5: Persist the full diagnostic bundle (delta manifests, schema-deploy JSON, Phase 2
+      # deploy JSON) as a downloadable artifact, regardless of which step failed or whether there
+      # were any changes to deploy at all. Without this, deploy-results/ and .deploy-delta/ only
+      # ever existed on the ephemeral runner and were gone the moment the job finished — the only
+      # way to root-cause a failure after the fact was to cross-check Salesforce Setup by hand.
+      # if-no-files-found: ignore because both directories are conditionally created (e.g. never
+      # on a no-changes run).
       - name: Upload Deploy Diagnostics
         if: always()
         uses: actions/upload-artifact@v4
