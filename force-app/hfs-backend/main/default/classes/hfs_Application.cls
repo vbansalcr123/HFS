@@ -11,14 +11,18 @@ public class hfs_Application {
   public static final SelectorFactory Selector = new SelectorFactory(
     new Map<SObjectType, Type>{
       hfs_Course__c.SObjectType => hfs_CoursesSelector.class,
-      hfs_CourseProgress__c.SObjectType => hfs_CourseProgressSelector.class
+      hfs_CourseProgress__c.SObjectType => hfs_CourseProgressSelector.class,
+      hfs_Program_Enrolment__c.SObjectType => hfs_ProgramEnrolmentsSelector.class,
+      hfs_Favorite__c.SObjectType => hfs_FavouritesSelector.class,
+      Order.SObjectType => hfs_OrdersSelector.class
     }
   );
 
   /** Service factory - resolves a Service implementation for a service interface Type. */
   public static final ServiceFactory Service = new ServiceFactory(
     new Map<Type, Type>{
-      hfs_TrainingService.class => hfs_TrainingServiceImpl.class
+      hfs_TrainingService.class => hfs_TrainingServiceImpl.class,
+      hfs_ToolboxService.class => hfs_ToolboxServiceImpl.class
     }
   );
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>hfs_Enrolment_Key_Required</fullName>
+    <active>true</active>
+    <description>Requires the unique Enrolment Key to be populated (set to MemberId:ProgramId by the data load) so the uniqueness guard prevents enrolling the same user in the same program twice.</description>
+    <errorConditionFormula>AND( NOT(ISBLANK(hfs_Member__c)), ISBLANK(hfs_Enrolment_Key__c) )</errorConditionFormula>
+    <errorDisplayField>hfs_Enrolment_Key__c</errorDisplayField>
+    <errorMessage>Enrolment Key is required (set it to MemberId:ProgramId). It is used to prevent duplicate enrolments.</errorMessage>
+</ValidationRule>

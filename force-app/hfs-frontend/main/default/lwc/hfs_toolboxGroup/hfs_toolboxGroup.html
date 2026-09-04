@@ -1,0 +1,28 @@
+<template>
+    <div class="hfs-group" role="group" aria-labelledby={headingId}>
+        <div class="hfs-group__label" id={headingId}>{label}</div>
+
+        <template lwc:if={isUnavailable}>
+            <div class="hfs-group__message">{unavailableText}</div>
+        </template>
+        <template lwc:elseif={showEmpty}>
+            <div class="hfs-group__message">{emptyMessage}</div>
+        </template>
+        <template lwc:else>
+            <div role="menu" aria-labelledby={headingId}>
+                <template for:each={items} for:item="item">
+                    <c-hfs_toolbox-item
+                        key={item.key}
+                        label={item.label}
+                        icon={item.icon}
+                        destination={item.destinationUrl}
+                        count={item.count}
+                        has-count={item.hasCount}
+                        count-status={item.countStatus}
+                        onselect={handleItemSelect}
+                    ></c-hfs_toolbox-item>
+                </template>
+            </div>
+        </template>
+    </div>
+</template>

@@ -82,4 +82,68 @@ public class hfs_TestDataFactory {
     return String.valueOf(Datetime.now().getTime()) +
       String.valueOf(Math.abs(Crypto.getRandomInteger()));
   }
+  public static List<hfs_Favorite__c> createFavourites(Integer count) {
+    List<hfs_Favorite__c> favourites = new List<hfs_Favorite__c>();
+    for (Integer i = 0; i < count; i++) {
+      favourites.add(
+        new hfs_Favorite__c(
+          Name = 'Favourite ' + i,
+          hfs_Target_URL__c = 'https://example.com/asset/' + i,
+          hfs_Icon__c = 'utility:favorite',
+          hfs_Sort_Order__c = i,
+          hfs_Item_Type__c = 'Asset'
+        )
+      );
+    }
+    insert favourites;
+    return favourites;
+  }
+
+  /**
+   * @description Create and insert active program catalog rows.
+   * @param count Number of programs to create.
+   * @return The inserted programs.
+   */
+  public static List<hfs_Program__c> createPrograms(Integer count) {
+    List<hfs_Program__c> programs = new List<hfs_Program__c>();
+    for (Integer i = 0; i < count; i++) {
+      programs.add(
+        new hfs_Program__c(
+          Name = 'Program ' + i,
+          hfs_Program_Key__c = 'Program ' + i,
+          hfs_Destination_URL__c = 'https://example.com/program/' + i,
+          hfs_Icon__c = 'utility:activity',
+          hfs_Sort_Order__c = i,
+          hfs_Active__c = true
+        )
+      );
+    }
+    insert programs;
+    return programs;
+  }
+
+  /**
+   * @description Enrol a member into the given programs (Status = Enrolled).
+   * @param programs Programs to enrol into.
+   * @param memberId The User to enrol.
+   * @return The inserted enrolment rows.
+   */
+  public static List<hfs_Program_Enrolment__c> createEnrolments(
+    List<hfs_Program__c> programs,
+    Id memberId
+  ) {
+    List<hfs_Program_Enrolment__c> enrolments = new List<hfs_Program_Enrolment__c>();
+    for (hfs_Program__c program : programs) {
+      enrolments.add(
+        new hfs_Program_Enrolment__c(
+          hfs_Program__c = program.Id,
+          hfs_Member__c = memberId,
+          hfs_Enrolment_Key__c = memberId + ':' + program.Id,
+          hfs_Status__c = 'Enrolled'
+        )
+      );
+    }
+    insert enrolments;
+    return enrolments;
+  }
 }

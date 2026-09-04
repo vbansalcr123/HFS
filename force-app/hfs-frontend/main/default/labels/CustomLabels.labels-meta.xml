@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
+    <labels>
+        <fullName>hfs_Toolbox_Panel_Title</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>My Toolbox panel title</shortDescription>
+        <value>My Toolbox</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Group_Quick_Actions</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Quick Actions group label</shortDescription>
+        <value>Quick Actions</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Group_My_Programs</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>My Programs group label</shortDescription>
+        <value>My Programs</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Group_Account</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Account group label</shortDescription>
+        <value>Account</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Action_My_Favourites</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>My Favourites quick action label</shortDescription>
+        <value>My Favourites</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Action_Recent_Downloads</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Recent Downloads quick action label</shortDescription>
+        <value>Recent Downloads</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Action_My_Orders</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>My Orders quick action label</shortDescription>
+        <value>My Orders</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Action_Saved_Searches</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Saved Searches quick action label</shortDescription>
+        <value>Saved Searches</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Action_Submit_A_Request</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Submit a Request quick action label</shortDescription>
+        <value>Submit a Request</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Account_My_Profile</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>My Profile account link label</shortDescription>
+        <value>My Profile</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Account_My_Station_Info</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>My Station Info account link label</shortDescription>
+        <value>My Station Info</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Account_Settings</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Settings account link label</shortDescription>
+        <value>Settings</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Programs_Empty</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>My Programs empty-state message</shortDescription>
+        <value>You are not enrolled in any programs yet.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Unavailable</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Unavailable state message</shortDescription>
+        <value>Currently unavailable</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Loading</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Loading state message</shortDescription>
+        <value>Loading…</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Close</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Close panel button label</shortDescription>
+        <value>Close My Toolbox</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Collapse</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Collapse panel button label</shortDescription>
+        <value>Collapse My Toolbox</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Expand</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Expand panel button label</shortDescription>
+        <value>Expand My Toolbox</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Items_Suffix</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Accessible count suffix, e.g. "8 items"</shortDescription>
+        <value>{0} items</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Toolbox_Unexpected_Error</fullName>
+        <categories>My Toolbox</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Safe fallback message for an unexpected controller error</shortDescription>
+        <value>Something went wrong. Please try again later.</value>
+    </labels>
+</CustomLabels>
