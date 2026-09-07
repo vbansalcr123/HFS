@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Portal_Account_Owner_Username__c</fullName>
+    <description>Username of the internal owner assigned to each self-registered partner Account. This user MUST have a UserRole, because Salesforce requires the owner of a portal (community) account to hold a role before a portal User can be created under it. Leave the account owner as this user rather than the guest/running user (who has no role).</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Portal Account Owner Username</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

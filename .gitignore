@@ -9,7 +9,7 @@
 deploy-options.json
 
 # Generated manifest
-manifest/package.xml
+# manifest/package.xml
 
 # LWC VSCode autocomplete
 **/lwc/jsconfig.json

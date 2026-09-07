@@ -24,4 +24,15 @@ public virtual class hfs_ApplicationException extends Exception {
   public void setErrorCode(String code) {
     this.errorCode = code;
   }
+
+  /**
+   * @description Factory that builds an exception from a message and error code, for call
+   * sites that read more naturally message-first (e.g. guard clauses).
+   * @param message the exception message
+   * @param code the stable, machine-readable error code (typically from hfs_Constants)
+   * @return the configured exception
+   */
+  public static hfs_ApplicationException build(String message, String code) {
+    return new hfs_ApplicationException(code, message);
+  }
 }

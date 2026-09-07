@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses>
+        <apexClass>hfs_RegistrationController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <custom>true</custom>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>hfs_Registration_Config__mdt.Portal_Account_Owner_Username__c</field>
+        <readable>false</readable>
+    </fieldPermissions>
+    <layoutAssignments>
+        <layout>hfs_Registration_Config__mdt-Registration Config Layout</layout>
+    </layoutAssignments>
+    <pageAccesses>
+        <apexPage>CommunitiesLanding</apexPage>
+        <enabled>true</enabled>
+    </pageAccesses>
+    <userLicense>Guest User License</userLicense>
+</Profile>

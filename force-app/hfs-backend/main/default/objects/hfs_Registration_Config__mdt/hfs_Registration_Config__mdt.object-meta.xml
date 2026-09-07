@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Per-environment configuration for the self-registration flow so no hard-coded Ids or names live in Apex.</description>
+    <label>Registration Config</label>
+    <pluralLabel>Registration Configs</pluralLabel>
+    <visibility>Public</visibility>
+</CustomObject>

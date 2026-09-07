@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>64.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>HFS Self Registration</masterLabel>
+    <description>Public registration form that collects name and email/username and provisions the partner for the Sinclair Partner Portal.</description>
+    <targets>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightningCommunity__Default">
+            <property name="confirmationPageApiName" type="String" label="Confirmation Page API Name" description="Route to navigate to after submit (shows a check-your-email message)." default="CheckEmail"/>
+            <property name="loginPageApiName" type="String" label="Login Page API Name" description="Target of the Sign in link." default="Login"/>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>
