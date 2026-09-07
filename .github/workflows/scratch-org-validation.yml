@@ -235,9 +235,11 @@ jobs:
 
           cp -r /tmp/deferred-profiles/. force-app/
 
+          # --metadata and --source-dir are mutually exclusive on "sf project deploy start". The
+          # profile(s) are already back under force-app (the default package directory per
+          # sfdx-project.json), so --metadata alone is enough to resolve and deploy them.
           sf project deploy start \
             --metadata Profile \
-            --source-dir force-app \
             --target-org "${{ steps.create-scratch.outputs.scratch-alias }}" \
             --wait 30
 
