@@ -1,7 +1,7 @@
 /**
  * @description Project-wide application factory built on the installed fflib-apex-common
  * framework. Every Selector and Service resolves through this class rather than being
- * instantiated directly, so any layer can be substituted with a mock in tests.
+ * instantiated directly, so any layer can be substituted with a mock in tests...
  *
  * The fflib factory setMock(...) methods are protected @TestVisible, so this class exposes
  * thin @TestVisible subclasses that surface a public setMock for test code to call.
