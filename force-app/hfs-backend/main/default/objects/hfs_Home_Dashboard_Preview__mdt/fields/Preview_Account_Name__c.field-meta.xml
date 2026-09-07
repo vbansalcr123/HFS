@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Preview_Account_Name__c</fullName>
+    <description>Exact Name of the dealer/distributor Account whose data the internal preview should show (e.g. Mile High Sinclair). Resolved to an Account Id at runtime. Ignored when Preview_Account_Id__c is set.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Preview Account Name</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

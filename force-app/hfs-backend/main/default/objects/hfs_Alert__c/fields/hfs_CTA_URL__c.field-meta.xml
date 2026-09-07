@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>hfs_CTA_URL__c</fullName>
+    <description>Call-to-action target. Validated as site-relative / allow-listed before render.</description>
+    <label>CTA URL</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Url</type>
+</CustomField>

@@ -29,7 +29,10 @@ public class hfs_Application {
       hfs_CourseProgress__c.SObjectType => hfs_CourseProgressSelector.class,
       hfs_Program_Enrolment__c.SObjectType => hfs_ProgramEnrolmentsSelector.class,
       hfs_Favorite__c.SObjectType => hfs_FavouritesSelector.class,
+      hfs_Download__c.SObjectType => hfs_DownloadsSelector.class,
+      hfs_Alert__c.SObjectType => hfs_AlertsSelector.class,
       Order.SObjectType => hfs_OrdersSelector.class,
+      Case.SObjectType => hfs_CasesSelector.class,
       Contact.SObjectType => hfs_ContactsSelector.class,
       User.SObjectType => hfs_UsersSelector.class,
       PermissionSet.SObjectType => hfs_PermissionSetsSelector.class
@@ -41,7 +44,8 @@ public class hfs_Application {
     new Map<Type, Type>{
       hfs_TrainingService.class => hfs_TrainingServiceImpl.class,
       hfs_ToolboxService.class => hfs_ToolboxServiceImpl.class,
-      hfs_RegistrationService.class => hfs_RegistrationServiceImpl.class
+      hfs_RegistrationService.class => hfs_RegistrationServiceImpl.class,
+      hfs_HomeDashboardService.class => hfs_HomeDashboardServiceImpl.class
     }
   );
 

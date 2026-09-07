@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>hfs_Audience__c</fullName>
+    <description>Target audience for record-level targeting of the announcement to a partner segment.</description>
+    <label>Audience</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>All</fullName>
+                <default>true</default>
+                <label>All</label>
+            </value>
+            <value>
+                <fullName>Dealer</fullName>
+                <default>false</default>
+                <label>Dealer</label>
+            </value>
+            <value>
+                <fullName>Distributor</fullName>
+                <default>false</default>
+                <label>Distributor</label>
+            </value>
+            <value>
+                <fullName>Unbranded Dealer</fullName>
+                <default>false</default>
+                <label>Unbranded Dealer</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>hfs_Asset_Type__c</fullName>
+    <description>Drives supporting detail (e.g. &quot;Logo files: 4 · Templates: 5&quot;).</description>
+    <label>Asset Type</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Logo</fullName>
+                <default>false</default>
+                <label>Logo</label>
+            </value>
+            <value>
+                <fullName>Template</fullName>
+                <default>false</default>
+                <label>Template</label>
+            </value>
+            <value>
+                <fullName>Doc</fullName>
+                <default>false</default>
+                <label>Doc</label>
+            </value>
+            <value>
+                <fullName>Video</fullName>
+                <default>false</default>
+                <label>Video</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

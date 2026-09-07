@@ -1,0 +1,29 @@
+<template>
+    <template lwc:if={showBanner}>
+        <div class="banner" role="region" aria-label={title}>
+            <div class="banner__body">
+                <p class="banner__text">
+                    <span class="banner__title">{title}</span>
+                    <template lwc:if={message}>
+                        <span class="banner__message">{message}</span>
+                    </template>
+                    <template lwc:if={showCta}>
+                        <a class="banner__cta" href={resolvedUrl}>{ctaLabel} &rarr;</a>
+                    </template>
+                </p>
+            </div>
+            <button
+                class="banner__dismiss"
+                type="button"
+                title="Dismiss"
+                onclick={handleDismiss}
+            >
+                <lightning-icon
+                    icon-name="utility:close"
+                    size="x-small"
+                    alternative-text="Dismiss"
+                ></lightning-icon>
+            </button>
+        </div>
+    </template>
+</template>

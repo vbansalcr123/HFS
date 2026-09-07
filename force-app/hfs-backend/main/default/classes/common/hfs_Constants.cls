@@ -20,6 +20,13 @@ public class hfs_Constants {
   public static final String TRAINING_LOAD_FAILED = 'TRAINING_LOAD_FAILED';
 
   // ----------------------------------------------------------------------
+  // Error codes - Home dashboard domain
+  // ----------------------------------------------------------------------
+
+  /** The Home dashboard could not be assembled for the current user. */
+  public static final String HOME_DASHBOARD_LOAD_FAILED = 'HOME_DASHBOARD_LOAD_FAILED';
+
+  // ----------------------------------------------------------------------
   // Error codes - Self-registration domain
   // ----------------------------------------------------------------------
 

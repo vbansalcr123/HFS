@@ -1,0 +1,19 @@
+.summary__greeting {
+    font-family: 'Public Sans', Arial, sans-serif;
+    font-weight: 700;
+    font-size: 1.75rem;
+    color: #16202c;
+    margin: 0 0 0.35rem;
+}
+
+.summary__account {
+    font-size: 0.9375rem;
+    color: #5a6675;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.summary__sep {
+    margin: 0 0.4rem;
+    color: #b6bdc7;
+}

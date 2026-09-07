@@ -1,0 +1,40 @@
+.banner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    background: #fbebd0;
+    border: 1px solid #edd3a4;
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+}
+
+.banner__text {
+    margin: 0;
+    color: #16202c;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+}
+
+.banner__title {
+    font-weight: 700;
+    margin-right: 0.35rem;
+}
+
+.banner__message {
+    margin-right: 0.35rem;
+}
+
+.banner__cta {
+    color: #c8102e;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.banner__dismiss {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.15rem;
+    line-height: 1;
+}

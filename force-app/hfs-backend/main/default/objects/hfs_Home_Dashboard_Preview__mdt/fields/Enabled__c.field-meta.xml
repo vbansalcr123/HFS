@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Enabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When TRUE, internal users without a partner Account see the dashboard for the configured preview Account. Set FALSE (or leave the org with no active record) once Customer Community users can self-register - real partners never use this path.</description>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Enabled</label>
+    <type>Checkbox</type>
+</CustomField>
