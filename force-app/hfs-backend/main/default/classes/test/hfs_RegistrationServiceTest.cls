@@ -3,10 +3,16 @@
  * the complete flow end-to-end — duplicate rejection, guard failures, fail-closed
  * provisioning, and the permission-set assignment — and directly covers the
  * Selector and Domain helpers it orchestrates (there are no standalone
- * selector / domain test classes).
+ * selector / domain test classes). Tier 1 (below) runs real DML, so whether
+ * provisioning actually succeeds depends on org config (profile/permission-set/
+ * portal-owner existing) that this test can't control; Tier 2 mocks
+ * hfs_Application.UnitOfWork, like hfs_ToolboxServiceImplTest mocks its
+ * Selectors, to make both the failure and success control-flow deterministic.
  */
 @IsTest
 private class hfs_RegistrationServiceTest {
+    // ---------- Tier 1: real end-to-end, no mocks ----------
+
     @IsTest
     static void registerPartner_duplicateContact_throwsDuplicate() {
         Account acct = new Account(Name = 'Existing Partner');
@@ -168,6 +174,46 @@ private class hfs_RegistrationServiceTest {
             SELECT Id FROM PermissionSetAssignment WHERE AssigneeId = :u.Id AND PermissionSetId = :permSetId
         ];
         Assert.areEqual(1, assignments.size(), 'Partner permission set should be assigned');
+    }
+
+    // ---------- Tier 2: mocked Selector (deterministic fail-closed path) ----------
+
+    @IsTest
+    static void provisionPartner_profileNotResolved_mapsToProvisioningFailed() {
+        // hfs_Application.UnitOfWork has no working mock seam in this fflib version
+        // (only Selector/Service are wrapped with a public setMock) — confirmed by an
+        // earlier attempt to mock commitWork() to throw, which silently fell through to
+        // the real UnitOfWork instead. Mocking the profile lookup instead forces the
+        // same explicit, deterministic fail-closed branch (profileId == null) that
+        // guards the real DML, without depending on this org's Community Plus
+        // profile/license actually being provisioned.
+        fflib_ApexMocks mocks = new fflib_ApexMocks();
+        hfs_UsersSelector mockUsersSel = (hfs_UsersSelector) mocks.mock(hfs_UsersSelector.class);
+        mocks.startStubbing();
+        mocks.when(mockUsersSel.selectProfileIdByName((String) fflib_Match.anyObject())).thenReturn(null);
+        mocks.stopStubbing();
+        hfs_Application.Selector.setMock(User.SObjectType, mockUsersSel);
+
+        hfs_RegistrationService svc = new hfs_RegistrationServiceImpl();
+        hfs_RegistrationWrapper dto = hfs_TestDataFactory.buildRegistrationWrapper(
+            'Mock NoProfile Co', 'Mock NoProfile Dealer', '(303) 555-0199',
+            'mocknoprofile@dealer.test', 'Dealer', 'Colorado', 'Forced failure test.'
+        );
+
+        Boolean threw = false;
+        Test.startTest();
+        try {
+            svc.provisionPartner(dto);
+        } catch (hfs_ApplicationException e) {
+            threw = true;
+            Assert.areEqual(
+                hfs_Constants.PROVISIONING_FAILED,
+                e.errorCode,
+                'An unresolved profile must always map to PROVISIONING_FAILED, regardless of org config'
+            );
+        }
+        Test.stopTest();
+        Assert.isTrue(threw, 'A profile lookup miss should always be surfaced as PROVISIONING_FAILED');
     }
 
     @IsTest
