@@ -16,11 +16,30 @@ public class hfs_Constants {
   public static final String UNEXPECTED = 'UNEXPECTED_ERROR';
 
   // ----------------------------------------------------------------------
-  // Error codes - Training domain
+  // Error codes - Training domain (read)
   // ----------------------------------------------------------------------
 
   /** The training view could not be assembled for the current user. */
   public static final String TRAINING_LOAD_FAILED = 'TRAINING_LOAD_FAILED';
+
+  // ----------------------------------------------------------------------
+  // Error codes - Training domain (action / write layer, HFS-34)
+  // ----------------------------------------------------------------------
+
+  /** Course content is blank or unreachable - the action fails closed, no status advance. */
+  public static final String CONTENT_UNAVAILABLE = 'CONTENT_UNAVAILABLE';
+
+  /** The progress / attempt write could not be committed. Generic action fallback. */
+  public static final String PROGRESS_WRITE_FAILED = 'PROGRESS_WRITE_FAILED';
+
+  /** The requested transition is not valid for the record's current status. */
+  public static final String INVALID_TRANSITION = 'INVALID_TRANSITION';
+
+  /** The signed-in user does not own the targeted progress record. */
+  public static final String NOT_OWNER = 'NOT_OWNER';
+
+  /** No completed attempt with a certificate exists for the signed-in user. */
+  public static final String NO_CERTIFICATE = 'NO_CERTIFICATE';
 
   // ----------------------------------------------------------------------
   // Error codes - Home dashboard domain

@@ -1,14 +1,30 @@
 import { LightningElement, api } from "lwc";
-import { labels, STATUS, formatDate } from "./hfs_trainingCourseCardUtils";
+import {
+  labels,
+  STATUS,
+  ACTION,
+  formatDate
+} from "./hfs_trainingCourseCardUtils";
 
 /**
  * Presentational course card. Shows category, title, status chip, description, duration, module
  * count, due date (overdue vs upcoming styling), new-release flag, a per-card progress bar and
- * current module for in-progress courses, and completion date for completed courses. Status is
- * announced to assistive tech and the card is keyboard-reachable (WCAG 2.1 AA).
+ * current module for in-progress courses, and completion date for completed courses.
+ *
+ * HFS-34: renders status-appropriate action buttons (Start / Resume / View Certificate + Retake),
+ * shows a per-action busy state (double-trigger disabled), surfaces a retry message when the
+ * container reports content is unavailable, and emits a `courseaction` event upward. The card
+ * stays dumb - it never calls Apex; the smart container performs the write. All actions are
+ * keyboard-reachable with clear labelled states (WCAG 2.1 AA).
  */
 export default class HfsTrainingCourseCard extends LightningElement {
   @api course;
+
+  // Which action (if any) is in-flight, driving the disabled / spinner state on this card.
+  @api busyAction;
+
+  // A retry message set by the container when an action fails closed (content unavailable).
+  @api retryMessage;
 
   labels = labels;
 
@@ -18,6 +34,15 @@ export default class HfsTrainingCourseCard extends LightningElement {
 
   get isInProgress() {
     return this.course && this.course.status === STATUS.IN_PROGRESS;
+  }
+
+  get isNotStarted() {
+    return !this.isCompleted && !this.isInProgress;
+  }
+
+  // Any in-flight action disables all of this card's action buttons (double-trigger protection).
+  get isBusy() {
+    return !!this.busyAction;
   }
 
   get statusLabel() {
@@ -106,5 +131,52 @@ export default class HfsTrainingCourseCard extends LightningElement {
 
   get ariaLabel() {
     return `${this.course ? this.course.title : ""}, ${this.statusLabel}`;
+  }
+
+  // Per-button busy flags so only the clicked action shows a spinner while all are disabled.
+  get isStartBusy() {
+    return this.busyAction === ACTION.START;
+  }
+
+  get isResumeBusy() {
+    return this.busyAction === ACTION.RESUME;
+  }
+
+  get isRetakeBusy() {
+    return this.busyAction === ACTION.RETAKE;
+  }
+
+  get isViewCertificateBusy() {
+    return this.busyAction === ACTION.VIEW_CERTIFICATE;
+  }
+
+  handleStart() {
+    this.emitAction(ACTION.START);
+  }
+
+  handleResume() {
+    this.emitAction(ACTION.RESUME);
+  }
+
+  handleRetake() {
+    this.emitAction(ACTION.RETAKE);
+  }
+
+  handleViewCertificate() {
+    this.emitAction(ACTION.VIEW_CERTIFICATE);
+  }
+
+  // Ignore repeat clicks while an action is in flight, then bubble the request to the container.
+  emitAction(action) {
+    if (this.isBusy || !this.course) {
+      return;
+    }
+    this.dispatchEvent(
+      new CustomEvent("courseaction", {
+        detail: { courseId: this.course.id, action },
+        bubbles: true,
+        composed: true
+      })
+    );
   }
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>hfs_CurrentAttempt__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description
+  >Points to the in-progress / latest attempt row for quick navigation and to drive card rendering. Set by the Domain when an attempt is created.</description>
+    <label>Current Attempt</label>
+    <referenceTo>hfs_CourseAttempt__c</referenceTo>
+    <relationshipLabel>Current For Progress</relationshipLabel>
+    <relationshipName>Current_For_Progress</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

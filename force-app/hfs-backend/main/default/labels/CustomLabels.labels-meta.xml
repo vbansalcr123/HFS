@@ -424,4 +424,108 @@
         <shortDescription>Password mismatch message</shortDescription>
         <value>The passwords you entered do not match.</value>
     </labels>
+    <labels>
+        <fullName>hfs_Error_Training_Action_Failed</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training error - generic action failure message</shortDescription>
+        <value
+    >We couldn&apos;t complete that training action. Please try again.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Training_Content_Unavailable</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training error - course content unavailable (fail-closed)</shortDescription>
+        <value
+    >This course is temporarily unavailable. Please try again in a moment.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Training_Invalid_Transition</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training error - action not valid for the current course status</shortDescription>
+        <value
+    >That action isn&apos;t available for this course right now.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Training_No_Certificate</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training error - no completed certificate available</shortDescription>
+        <value>No certificate is available for this course yet.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Training_Not_Owner</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training error - user does not own the progress record</shortDescription>
+        <value
+    >We couldn&apos;t find your training progress for this course.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_Action_Resume</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training action - Resume course button label</shortDescription>
+        <value>Resume Course</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_Action_Retake</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training action - Retake button label</shortDescription>
+        <value>Retake</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_Action_Start</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training action - Start course button label</shortDescription>
+        <value>Start Course</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_Action_ViewCertificate</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training action - View Certificate button label</shortDescription>
+        <value>View Certificate</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_Busy</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training action - busy / loading state text</shortDescription>
+        <value>Working...</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_Retry_ContentUnavailable</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription
+    >Training action - content unavailable retry message shown on the card</shortDescription>
+        <value
+    >This course is temporarily unavailable. Please try again in a moment.</value>
+    </labels>
 </CustomLabels>

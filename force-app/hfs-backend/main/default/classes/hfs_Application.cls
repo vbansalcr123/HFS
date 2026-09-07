@@ -1,8 +1,7 @@
 /**
  * @description Project-wide application factory built on the installed fflib-apex-common
- * framework. Every Unit of Work, Domain, Selector and Service resolves through this class
- * rather than being instantiated directly, so any layer can be substituted with a mock in
- * tests.
+ * framework. Every Selector, Service, Domain and the Unit of Work resolves through this class
+ * rather than being instantiated directly, so any layer can be substituted with a mock in tests.
  *
  * The fflib factory setMock(...) methods are protected @TestVisible, so this class exposes
  * thin @TestVisible subclasses that surface a public setMock for test code to call.
@@ -27,6 +26,7 @@ public class hfs_Application {
     new Map<SObjectType, Type>{
       hfs_Course__c.SObjectType => hfs_CoursesSelector.class,
       hfs_CourseProgress__c.SObjectType => hfs_CourseProgressSelector.class,
+      hfs_CourseAttempt__c.SObjectType => hfs_CourseAttemptSelector.class,
       hfs_Program_Enrolment__c.SObjectType => hfs_ProgramEnrolmentsSelector.class,
       hfs_Favorite__c.SObjectType => hfs_FavouritesSelector.class,
       hfs_Download__c.SObjectType => hfs_DownloadsSelector.class,
@@ -57,6 +57,30 @@ public class hfs_Application {
     hfs_Application.Selector,
     new Map<Schema.SObjectType, Type>{
       Contact.SObjectType => hfs_ContactsDomain.Constructor.class
+    }
+  );
+
+  /**
+   * @description Domain factory - resolves a Domain implementation for an SObjectType so callers
+   * never new a Domain constructor directly (HFS-34 write layer).
+   */
+  public static final fflib_Application.DomainFactory Domain = new fflib_Application.DomainFactory(
+    hfs_Application.Selector,
+    new Map<SObjectType, Type>{
+      hfs_CourseProgress__c.SObjectType => hfs_CourseProgressDomain.Constructor.class,
+      hfs_CourseAttempt__c.SObjectType => hfs_CourseAttemptDomain.Constructor.class
+    }
+  );
+
+  /**
+   * @description Unit of Work factory - single, project-wide factory registered once with the
+   * commit order across the objects the write layer persists. Parent progress commits before its
+   * child attempt so the Master-Detail relationship resolves in one transaction (HFS-34).
+   */
+  public static final UnitOfWorkFactory UnitOfWork = new UnitOfWorkFactory(
+    new List<SObjectType>{
+      hfs_CourseProgress__c.SObjectType,
+      hfs_CourseAttempt__c.SObjectType
     }
   );
 

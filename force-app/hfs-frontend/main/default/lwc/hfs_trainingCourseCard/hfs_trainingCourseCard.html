@@ -37,5 +37,75 @@
     <template lwc:if={dueLine}>
       <p class={dueClass}>{dueLine}</p>
     </template>
+
+    <!-- HFS-34 action row: status-appropriate actions with per-action busy state -->
+    <div class="hfs-card-actions">
+      <template lwc:if={isNotStarted}>
+        <lightning-button
+          label={labels.actionStart}
+          variant="brand"
+          onclick={handleStart}
+          disabled={isBusy}
+          class="hfs-action-primary"
+        ></lightning-button>
+        <template lwc:if={isStartBusy}>
+          <lightning-spinner
+            size="small"
+            alternative-text={labels.busy}
+          ></lightning-spinner>
+        </template>
+      </template>
+
+      <template lwc:if={isInProgress}>
+        <lightning-button
+          label={labels.actionResume}
+          variant="brand"
+          onclick={handleResume}
+          disabled={isBusy}
+          class="hfs-action-primary"
+        ></lightning-button>
+        <template lwc:if={isResumeBusy}>
+          <lightning-spinner
+            size="small"
+            alternative-text={labels.busy}
+          ></lightning-spinner>
+        </template>
+      </template>
+
+      <template lwc:if={isCompleted}>
+        <lightning-button
+          label={labels.actionViewCertificate}
+          variant="success"
+          onclick={handleViewCertificate}
+          disabled={isBusy}
+          class="hfs-action-cert"
+        ></lightning-button>
+        <lightning-button
+          label={labels.actionRetake}
+          variant="neutral"
+          onclick={handleRetake}
+          disabled={isBusy}
+          class="hfs-action-retake"
+        ></lightning-button>
+        <template lwc:if={isViewCertificateBusy}>
+          <lightning-spinner
+            size="small"
+            alternative-text={labels.busy}
+          ></lightning-spinner>
+        </template>
+        <template lwc:if={isRetakeBusy}>
+          <lightning-spinner
+            size="small"
+            alternative-text={labels.busy}
+          ></lightning-spinner>
+        </template>
+      </template>
+    </div>
+
+    <template lwc:if={retryMessage}>
+      <p class="hfs-card-retry" role="alert" aria-live="assertive">
+        {retryMessage}
+      </p>
+    </template>
   </article>
 </template>

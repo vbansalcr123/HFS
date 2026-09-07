@@ -1,7 +1,9 @@
 /**
  * @description Selector for hfs_CourseProgress__c built on fflib_SObjectSelector. The typed
- * selectByUser method pins hfs_User__c to the supplied user, so a user's payload can only ever
- * contain their own progress. Runs in USER_MODE so CRUD/FLS are enforced at query time.
+ * selectByUser / selectByUserAndCourse methods pin hfs_User__c to the supplied user, so a user's
+ * payload can only ever contain their own progress. Runs in USER_MODE so CRUD/FLS are enforced at
+ * query time. HFS-34 adds the summary/attempt fields and the single-course own-data lookup used by
+ * the write actions.
  */
 public inherited sharing virtual class hfs_CourseProgressSelector extends fflib_SObjectSelector {
   /**
@@ -33,7 +35,10 @@ public inherited sharing virtual class hfs_CourseProgressSelector extends fflib_
       hfs_CourseProgress__c.hfs_CurrentModule__c,
       hfs_CourseProgress__c.hfs_CompletionDate__c,
       hfs_CourseProgress__c.hfs_CertificateUrl__c,
-      hfs_CourseProgress__c.hfs_LastAccessedDate__c
+      hfs_CourseProgress__c.hfs_LastAccessedDate__c,
+      hfs_CourseProgress__c.hfs_AttemptNumber__c,
+      hfs_CourseProgress__c.hfs_CurrentAttempt__c,
+      hfs_CourseProgress__c.hfs_TotalAttempts__c
     };
   }
 
@@ -52,6 +57,29 @@ public inherited sharing virtual class hfs_CourseProgressSelector extends fflib_
     return (List<hfs_CourseProgress__c>) Database.queryWithBinds(
       soql,
       new Map<String, Object>{ 'userId' => userId },
+      AccessLevel.USER_MODE
+    );
+  }
+
+  /**
+   * @description Returns the single progress record the supplied user owns for a single course
+   * (own-data enforcement for the write actions), or an empty list when none exists.
+   * @param userId the signed-in user
+   * @param courseId the course whose progress is required
+   * @return the user's progress for that course (list of at most one)
+   */
+  public virtual List<hfs_CourseProgress__c> selectByUserAndCourse(
+    Id userId,
+    Id courseId
+  ) {
+    String soql = newQueryFactory()
+      .setEnforceFLS(fflib_QueryFactory.FLSEnforcement.NONE)
+      .setCondition('hfs_User__c = :userId AND hfs_Course__c = :courseId')
+      .setLimit(1)
+      .toSOQL();
+    return (List<hfs_CourseProgress__c>) Database.queryWithBinds(
+      soql,
+      new Map<String, Object>{ 'userId' => userId, 'courseId' => courseId },
       AccessLevel.USER_MODE
     );
   }

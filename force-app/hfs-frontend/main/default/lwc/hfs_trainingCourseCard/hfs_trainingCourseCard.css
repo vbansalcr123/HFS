@@ -125,3 +125,29 @@
   color: #e9a93b;
   font-weight: 600;
 }
+
+/* HFS-34 action row - holds layout from 360px to 1920px; wraps then stacks on narrow viewports */
+.hfs-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.hfs-card-retry {
+  font-size: 0.8rem;
+  color: #8c1d1d;
+  background-color: #fbe9e9;
+  border: 1px solid #f3c5c5;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  margin: 0.5rem 0 0;
+}
+
+@media (max-width: 480px) {
+  .hfs-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
