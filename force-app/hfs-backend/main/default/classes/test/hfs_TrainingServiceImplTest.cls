@@ -380,6 +380,9 @@ private class hfs_TrainingServiceImplTest {
       insert u;
       insert ps;
 
+      // PermissionsViewAllFields is intentionally not set on hfs_CourseProgress__c: it can't
+      // coexist with the explicit per-field FieldPermissions rows inserted below for the same
+      // object - Salesforce rejects that combination with FIELD_INTEGRITY_EXCEPTION.
       insert new List<ObjectPermissions>{
         new ObjectPermissions(
           ParentId = ps.Id,
@@ -390,8 +393,7 @@ private class hfs_TrainingServiceImplTest {
           ParentId = ps.Id,
           SObjectType = 'hfs_CourseProgress__c',
           PermissionsRead = true,
-          PermissionsViewAllRecords = true,
-          PermissionsViewAllFields = true
+          PermissionsViewAllRecords = true
         ),
         new ObjectPermissions(
           ParentId = ps.Id,
@@ -1144,8 +1146,10 @@ private class hfs_TrainingServiceImplTest {
   }
 
   /**
-   * @description Builds a restricted Standard User and assigns the HFS Training Access permission
-   * set so the USER_MODE selectors / Unit of Work can read and write the training records under
+   * @description Builds a restricted Standard User and grants object CRUD + field FLS on the
+   * Course/Progress/Attempt objects via a test-only PermissionSet (built entirely in Apex, not
+   * shipped metadata - there is no packaged "training access" permission set for this feature
+   * yet), so the USER_MODE selectors / Unit of Work can read and write the training records under
    * runAs. Setup DML is isolated to avoid MIXED_DML_OPERATION with the later course DML.
    * @return the inserted, assigned user
    */
@@ -1173,24 +1177,33 @@ private class hfs_TrainingServiceImplTest {
       );
       insert u;
 
-      PermissionSet ps = [
-        SELECT Id
-        FROM PermissionSet
-        WHERE Name = 'hfs_Training_Access'
-        LIMIT 1
-      ];
-      insert new PermissionSetAssignment(
-        AssigneeId = u.Id,
-        PermissionSetId = ps.Id
+      PermissionSet ps = new PermissionSet(
+        Name = 'hfs_ActionTestAccess',
+        Label = 'HFS Action Test Access'
       );
+      insert ps;
 
-      // The USER_MODE selectors read the full Course/Progress field lists, so grant read FLS on
-      // the additional (non-required, not-yet-granted) fields via a test-only permission set.
-      PermissionSet flsPs = new PermissionSet(
-        Name = 'hfs_ActionTestFls',
-        Label = 'HFS Action Test FLS'
-      );
-      insert flsPs;
+      insert new List<ObjectPermissions>{
+        new ObjectPermissions(
+          ParentId = ps.Id,
+          SObjectType = 'hfs_Course__c',
+          PermissionsRead = true
+        ),
+        new ObjectPermissions(
+          ParentId = ps.Id,
+          SObjectType = 'hfs_CourseProgress__c',
+          PermissionsRead = true,
+          PermissionsCreate = true,
+          PermissionsEdit = true
+        ),
+        new ObjectPermissions(
+          ParentId = ps.Id,
+          SObjectType = 'hfs_CourseAttempt__c',
+          PermissionsRead = true,
+          PermissionsCreate = true,
+          PermissionsEdit = true
+        )
+      };
 
       List<String> readableFields = new List<String>{
         'hfs_Course__c.hfs_Description__c',
@@ -1199,24 +1212,32 @@ private class hfs_TrainingServiceImplTest {
         'hfs_Course__c.hfs_DueDate__c',
         'hfs_Course__c.hfs_IsNewRelease__c',
         'hfs_Course__c.hfs_ReleasedDate__c',
-        'hfs_Course__c.hfs_IsActive__c'
+        'hfs_Course__c.hfs_IsActive__c',
+        'hfs_Course__c.hfs_ContentUrl__c'
       };
       // Fields the write path (Domain via USER_MODE Unit of Work) must be able to edit.
-      // hfs_Status__c is omitted - it is required (always visible/editable with object access),
-      // so a FieldPermissions row for it is rejected.
+      // hfs_Status__c (both objects) and hfs_CourseAttempt__c.hfs_AttemptNumber__c /
+      // hfs_StartedDate__c are required - always visible/editable with object access - so a
+      // FieldPermissions row for them is rejected. hfs_CourseProgress__c.hfs_TotalAttempts__c is a
+      // roll-up summary - also non-permissionable, always readable with object access.
       List<String> editableFields = new List<String>{
         'hfs_CourseProgress__c.hfs_User__c',
         'hfs_CourseProgress__c.hfs_PercentComplete__c',
         'hfs_CourseProgress__c.hfs_CurrentModule__c',
         'hfs_CourseProgress__c.hfs_CompletionDate__c',
         'hfs_CourseProgress__c.hfs_LastAccessedDate__c',
-        'hfs_CourseProgress__c.hfs_CertificateUrl__c'
+        'hfs_CourseProgress__c.hfs_CertificateUrl__c',
+        'hfs_CourseProgress__c.hfs_AttemptNumber__c',
+        'hfs_CourseProgress__c.hfs_CurrentAttempt__c',
+        'hfs_CourseAttempt__c.hfs_CertificateUrl__c',
+        'hfs_CourseAttempt__c.hfs_CompletionDate__c',
+        'hfs_CourseAttempt__c.hfs_PercentComplete__c'
       };
       List<FieldPermissions> fps = new List<FieldPermissions>();
       for (String field : readableFields) {
         fps.add(
           new FieldPermissions(
-            ParentId = flsPs.Id,
+            ParentId = ps.Id,
             SObjectType = field.substringBefore('.'),
             Field = field,
             PermissionsRead = true,
@@ -1227,7 +1248,7 @@ private class hfs_TrainingServiceImplTest {
       for (String field : editableFields) {
         fps.add(
           new FieldPermissions(
-            ParentId = flsPs.Id,
+            ParentId = ps.Id,
             SObjectType = field.substringBefore('.'),
             Field = field,
             PermissionsRead = true,
@@ -1238,7 +1259,7 @@ private class hfs_TrainingServiceImplTest {
       insert fps;
       insert new PermissionSetAssignment(
         AssigneeId = u.Id,
-        PermissionSetId = flsPs.Id
+        PermissionSetId = ps.Id
       );
     }
     return u;

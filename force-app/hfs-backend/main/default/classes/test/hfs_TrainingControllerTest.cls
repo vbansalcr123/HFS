@@ -282,13 +282,14 @@ private class hfs_TrainingControllerTest {
    */
   @IsTest
   static void certificate_ownedCompleted_resolvesCertificate() {
+    User certUser = makeCertificateTestUser();
     hfs_Course__c course = hfs_TestDataFactory.createLaunchableCourses(
       1,
       true
     )[0];
     hfs_CourseProgress__c progress = hfs_TestDataFactory.createProgress(
       course.Id,
-      UserInfo.getUserId(),
+      certUser.Id,
       'Completed',
       100
     );
@@ -298,10 +299,13 @@ private class hfs_TrainingControllerTest {
     insert progress;
 
     Test.startTest();
-    PageReference ref = Page.hfs_TrainingCertificate;
-    ref.getParameters().put('courseId', course.Id);
-    Test.setCurrentPage(ref);
-    hfs_TrainingController ctrl = new hfs_TrainingController();
+    hfs_TrainingController ctrl;
+    System.runAs(certUser) {
+      PageReference ref = Page.hfs_TrainingCertificate;
+      ref.getParameters().put('courseId', course.Id);
+      Test.setCurrentPage(ref);
+      ctrl = new hfs_TrainingController();
+    }
     Test.stopTest();
 
     System.Assert.isTrue(
@@ -346,16 +350,20 @@ private class hfs_TrainingControllerTest {
    */
   @IsTest
   static void certificate_notOwned_hasNoCertificate() {
+    User certUser = makeCertificateTestUser();
     hfs_Course__c course = hfs_TestDataFactory.createLaunchableCourses(
       1,
       true
     )[0];
 
     Test.startTest();
-    PageReference ref = Page.hfs_TrainingCertificate;
-    ref.getParameters().put('courseId', course.Id);
-    Test.setCurrentPage(ref);
-    hfs_TrainingController ctrl = new hfs_TrainingController();
+    hfs_TrainingController ctrl;
+    System.runAs(certUser) {
+      PageReference ref = Page.hfs_TrainingCertificate;
+      ref.getParameters().put('courseId', course.Id);
+      Test.setCurrentPage(ref);
+      ctrl = new hfs_TrainingController();
+    }
     Test.stopTest();
 
     System.Assert.isFalse(
@@ -380,6 +388,97 @@ private class hfs_TrainingControllerTest {
       ctrl.hasCertificate,
       'An invalid course parameter yields no certificate'
     );
+  }
+
+  /**
+   * @description Creates a Standard User and grants Read + field FLS on the Course/Progress
+   * fields the certificate page controller's USER_MODE selector queries, via a test-only
+   * PermissionSet built entirely in Apex (there is no packaged "training access" permission set
+   * for this feature yet). Metadata-deployed custom fields grant no profile FLS by default, not
+   * even to the org's admin. Setup-object DML (User/PermissionSet/*Permissions/
+   * PermissionSetAssignment) is isolated in its own runAs so it doesn't collide with the caller's
+   * own hfs_Course__c/hfs_CourseProgress__c DML in the same transaction.
+   * @return the inserted user with the permission set assigned
+   */
+  private static User makeCertificateTestUser() {
+    Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+    String unique = String.valueOf(Datetime.now().getTime());
+    User u = new User(
+      FirstName = 'HFS',
+      LastName = 'CertTester',
+      Alias = 'hfsct',
+      Email = 'hfs.cert.tester@example.com',
+      Username = 'hfs.cert.tester.' + unique + '@example.com.invalid',
+      EmailEncodingKey = 'UTF-8',
+      LanguageLocaleKey = 'en_US',
+      LocaleSidKey = 'en_US',
+      TimeZoneSidKey = 'America/Los_Angeles',
+      ProfileId = p.Id
+    );
+
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      insert u;
+
+      PermissionSet ps = new PermissionSet(
+        Name = 'hfs_CertTestAccess',
+        Label = 'HFS Certificate Test Access'
+      );
+      insert ps;
+
+      insert new List<ObjectPermissions>{
+        new ObjectPermissions(
+          ParentId = ps.Id,
+          SObjectType = 'hfs_Course__c',
+          PermissionsRead = true
+        ),
+        new ObjectPermissions(
+          ParentId = ps.Id,
+          SObjectType = 'hfs_CourseProgress__c',
+          PermissionsRead = true
+        )
+      };
+
+      // hfs_Category__c/hfs_Status__c are required (always visible with object access), and
+      // hfs_CourseProgress__c.hfs_TotalAttempts__c is a roll-up summary (non-permissionable) -
+      // none of the three accept a FieldPermissions row.
+      List<String> readableFields = new List<String>{
+        'hfs_Course__c.hfs_Description__c',
+        'hfs_Course__c.hfs_DurationMinutes__c',
+        'hfs_Course__c.hfs_ModuleCount__c',
+        'hfs_Course__c.hfs_DueDate__c',
+        'hfs_Course__c.hfs_IsNewRelease__c',
+        'hfs_Course__c.hfs_ReleasedDate__c',
+        'hfs_Course__c.hfs_IsActive__c',
+        'hfs_Course__c.hfs_ContentUrl__c',
+        'hfs_CourseProgress__c.hfs_User__c',
+        'hfs_CourseProgress__c.hfs_PercentComplete__c',
+        'hfs_CourseProgress__c.hfs_CurrentModule__c',
+        'hfs_CourseProgress__c.hfs_CompletionDate__c',
+        'hfs_CourseProgress__c.hfs_CertificateUrl__c',
+        'hfs_CourseProgress__c.hfs_LastAccessedDate__c',
+        'hfs_CourseProgress__c.hfs_AttemptNumber__c',
+        'hfs_CourseProgress__c.hfs_CurrentAttempt__c'
+      };
+      List<FieldPermissions> fps = new List<FieldPermissions>();
+      for (String field : readableFields) {
+        fps.add(
+          new FieldPermissions(
+            ParentId = ps.Id,
+            SObjectType = field.substringBefore('.'),
+            Field = field,
+            PermissionsRead = true,
+            PermissionsEdit = false
+          )
+        );
+      }
+      insert fps;
+
+      insert new PermissionSetAssignment(
+        AssigneeId = u.Id,
+        PermissionSetId = ps.Id
+      );
+    }
+    return u;
   }
 
   /**
