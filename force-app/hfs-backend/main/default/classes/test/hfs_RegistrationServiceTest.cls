@@ -207,9 +207,25 @@ private class hfs_RegistrationServiceTest {
         );
 
         // Permission sets selector.
-        Id permSetId = ((hfs_PermissionSetsSelector) hfs_Application.Selector.newInstance(PermissionSet.SObjectType))
-            .selectIdByName('hfs_Dry_Run_Partner');
+        hfs_PermissionSetsSelector permSetsSel = (hfs_PermissionSetsSelector) hfs_Application.Selector.newInstance(
+            PermissionSet.SObjectType
+        );
+        Id permSetId = permSetsSel.selectIdByName('hfs_Dry_Run_Partner');
         Assert.isNotNull(permSetId, 'Permission set selector should resolve the partner permission set');
+        Assert.isNull(
+            permSetsSel.selectIdByName('no.such.permission.set'),
+            'Unknown permission set name resolves to null'
+        );
+        Assert.areEqual(
+            PermissionSet.SObjectType,
+            permSetsSel.sObjectType(),
+            'sObjectType should be the PermissionSet object'
+        );
+        Assert.areEqual(
+            new List<Schema.SObjectField>{ PermissionSet.Id, PermissionSet.Name },
+            permSetsSel.getSObjectFieldList(),
+            'Field list should be Id and Name'
+        );
 
         // Contacts Domain (fflib) — the full name is staged on LastName;
         // parsing happens via the Domain's defaulting. Resolve the Domain
