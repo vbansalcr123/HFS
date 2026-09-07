@@ -4,9 +4,9 @@
  * every error branch), including the response wrapper's own success/error/
  * unexpected paths — there is no separate wrapper test class.
  */
-@isTest
+@IsTest
 private class hfs_RegistrationControllerTest {
-    @isTest
+    @IsTest
     static void register_uniqueInput_returnsWellFormedResponse() {
         User current = new User(Id = UserInfo.getUserId());
         hfs_Response response;
@@ -28,7 +28,7 @@ private class hfs_RegistrationControllerTest {
         }
     }
 
-    @isTest
+    @IsTest
     static void register_duplicate_returnsDuplicateErrorResponse() {
         Account acct = new Account(Name = 'Ctrl Existing');
         insert acct;
@@ -45,7 +45,7 @@ private class hfs_RegistrationControllerTest {
         Assert.isNotNull(response.errorMessage, 'A displayable error message should be present');
     }
 
-    @isTest
+    @IsTest
     static void register_nullInput_returnsErrorResponse() {
         Test.startTest();
         hfs_Response response = hfs_RegistrationController.register(null);
@@ -55,7 +55,7 @@ private class hfs_RegistrationControllerTest {
         Assert.isNotNull(response.errorCode, 'Guard failure should carry a code');
     }
 
-    @isTest
+    @IsTest
     static void register_blankName_returnsErrorResponse() {
         hfs_RegistrationWrapper w = hfs_TestDataFactory.buildRegistrationWrapper('', 'blankname@dealer.test');
 
@@ -66,7 +66,7 @@ private class hfs_RegistrationControllerTest {
         Assert.isFalse(response.isSuccess, 'Blank name should fail at the guard boundary');
     }
 
-    @isTest
+    @IsTest
     static void response_successAndErrorFactories_populateFields() {
         // Covers the response wrapper directly — success, explicit error(msg,code),
         // known hfs_ApplicationException, and the generic/unexpected branch.

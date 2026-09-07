@@ -5,9 +5,9 @@
  * Selector and Domain helpers it orchestrates (there are no standalone
  * selector / domain test classes).
  */
-@isTest
+@IsTest
 private class hfs_RegistrationServiceTest {
-    @isTest
+    @IsTest
     static void registerPartner_duplicateContact_throwsDuplicate() {
         Account acct = new Account(Name = 'Existing Partner');
         insert acct;
@@ -28,7 +28,7 @@ private class hfs_RegistrationServiceTest {
         Assert.isTrue(threw, 'Duplicate contact should be rejected');
     }
 
-    @isTest
+    @IsTest
     static void registerPartner_blankName_tripsGuard() {
         hfs_RegistrationService svc = new hfs_RegistrationServiceImpl();
         hfs_RegistrationWrapper w = hfs_TestDataFactory.buildRegistrationWrapper('', 'blank@dealer.test');
@@ -45,7 +45,7 @@ private class hfs_RegistrationServiceTest {
         Assert.isTrue(threw, 'Blank name should throw a guard exception');
     }
 
-    @isTest
+    @IsTest
     static void registerPartner_uniqueInput_provisionsOrFailsClosed() {
         User current = new User(Id = UserInfo.getUserId());
         System.runAs(current) {
@@ -74,7 +74,7 @@ private class hfs_RegistrationServiceTest {
         }
     }
 
-    @isTest
+    @IsTest
     static void provisionPartner_createsInactiveUserOrFailsClosed() {
         User current = new User(Id = UserInfo.getUserId());
         System.runAs(current) {
@@ -121,7 +121,7 @@ private class hfs_RegistrationServiceTest {
         }
     }
 
-    @isTest
+    @IsTest
     static void provisionPartner_blankEmail_tripsGuard() {
         // A blank email trips the guard before any DML — proves no records are
         // created on invalid input.
@@ -137,7 +137,7 @@ private class hfs_RegistrationServiceTest {
         Assert.isTrue(threw, 'Blank email should trip the guard before provisioning');
     }
 
-    @isTest
+    @IsTest
     static void assignPartnerPermissionSet_assignsPermSet() {
         // Cover the post-insert permission-set assignment directly with a real
         // test user so the assignment line executes (no mixed DML).
@@ -170,40 +170,45 @@ private class hfs_RegistrationServiceTest {
         Assert.areEqual(1, assignments.size(), 'Partner permission set should be assigned');
     }
 
-    @isTest
+    @IsTest
     static void selectorsAndDomain_coveredThroughService() {
         // Directly exercise the Selector and Domain helpers the service orchestrates
-        // (no standalone selector/domain test classes per team convention).
+        // (no standalone selector/domain test classes per team convention). Every
+        // selector below is resolved through hfs_Application.Selector, never `new`'d
+        // directly, so the same seam the Service uses is exercised here too.
         Account acct = new Account(Name = 'Sel Domain Co');
         insert acct;
         insert new Contact(LastName = 'Sel', Email = 'seldomain@dealer.test', AccountId = acct.Id);
 
         Test.startTest();
-        // Contacts selector (SYSTEM_MODE, bind map).
-        List<Contact> found = new hfs_ContactsGenericSelector().getContactsRecords(
-            'Email = :email',
-            new Map<String, Object>{ 'email' => 'seldomain@dealer.test' },
-            new List<String>{ 'Id', 'Email' }
-        );
-        Assert.areEqual(1, found.size(), 'Contacts selector should find the seeded Contact');
-
         // Users selector + profile resolution.
-        hfs_UsersSelector usersSel = new hfs_UsersSelector();
-        Id profileId = usersSel.getProfileIdByName('System Administrator');
+        hfs_UsersSelector usersSel = (hfs_UsersSelector) hfs_Application.Selector.newInstance(User.SObjectType);
+        Id profileId = usersSel.selectProfileIdByName('System Administrator');
         Assert.isNotNull(profileId, 'Users selector should resolve a Profile Id');
+
+        // Duplicate detection by username / email (SYSTEM_MODE, bind map).
+        List<User> byUsernameOrEmail = usersSel.selectByUsernameOrEmail(
+            'no.such.username@nowhere.invalid',
+            'seldomain@dealer.test'
+        );
+        Assert.isTrue(byUsernameOrEmail.isEmpty(), 'No User exists yet for this email/username pair');
 
         // Portal account owner resolution by username (role-bearing owner lookup).
         User me = [SELECT Username FROM User WHERE Id = :UserInfo.getUserId() LIMIT 1];
         Assert.areEqual(
             UserInfo.getUserId(),
-            usersSel.getUserIdByUsername(me.Username),
+            usersSel.selectActiveIdByUsername(me.Username),
             'Owner lookup resolves an active User by username'
         );
-        Assert.isNull(usersSel.getUserIdByUsername(null), 'Blank username resolves to null');
-        Assert.isNull(usersSel.getUserIdByUsername('no.such.user@nowhere.invalid'), 'Unknown username resolves to null');
+        Assert.isNull(usersSel.selectActiveIdByUsername(null), 'Blank username resolves to null');
+        Assert.isNull(
+            usersSel.selectActiveIdByUsername('no.such.user@nowhere.invalid'),
+            'Unknown username resolves to null'
+        );
 
         // Permission sets selector.
-        Id permSetId = new hfs_PermissionSetsSelector().getPermissionSetIdByName('hfs_Dry_Run_Partner');
+        Id permSetId = ((hfs_PermissionSetsSelector) hfs_Application.Selector.newInstance(PermissionSet.SObjectType))
+            .selectIdByName('hfs_Dry_Run_Partner');
         Assert.isNotNull(permSetId, 'Permission set selector should resolve the partner permission set');
 
         // Contacts Domain (fflib) — the full name is staged on LastName;

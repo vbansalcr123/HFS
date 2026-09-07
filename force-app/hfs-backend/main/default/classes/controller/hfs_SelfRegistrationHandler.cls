@@ -34,7 +34,9 @@ public without sharing class hfs_SelfRegistrationHandler implements Auth.Configu
         hfs_RegistrationWrapper dto = new hfs_RegistrationWrapper();
         dto.name = fullName.trim();
         dto.email = email;
-        hfs_RegistrationService service = new hfs_RegistrationServiceImpl();
-        return service.provisionPartner(dto);
+        hfs_RegistrationService service = (hfs_RegistrationService) hfs_Application.Service.newInstance(
+            hfs_RegistrationService.class
+        );
+        return service.registerPartner(dto);
     }
 }

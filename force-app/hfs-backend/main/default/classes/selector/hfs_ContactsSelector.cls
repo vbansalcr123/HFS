@@ -1,8 +1,8 @@
 /**
  * @description fflib Selector for Contact, registered in hfs_Application.Selector.
  * Centralises the Contact field list and standard id-based selection through the
- * fflib QueryFactory (enforces FLS/CRUD). Email-based duplicate detection remains
- * in hfs_ContactsGenericSelector's generic query path used by the Service.
+ * fflib QueryFactory (enforces FLS/CRUD), including email-based duplicate
+ * detection for the self-registration Service.
  */
 public inherited sharing class hfs_ContactsSelector extends fflib_SObjectSelector {
     /**

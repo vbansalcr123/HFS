@@ -53,10 +53,6 @@
         <enabled>false</enabled>
     </classAccesses>
     <classAccesses>
-        <apexClass>hfs_ContactsGenericSelector</apexClass>
-        <enabled>false</enabled>
-    </classAccesses>
-    <classAccesses>
         <apexClass>hfs_ContactsSelector</apexClass>
         <enabled>false</enabled>
     </classAccesses>

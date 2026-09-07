@@ -7,16 +7,13 @@
  * link, and the account activates only when the user clicks it.
  */
 public without sharing class hfs_RegistrationServiceImpl implements hfs_RegistrationService {
-    private final hfs_ContactsGenericSelector contactsSelector = new hfs_ContactsGenericSelector();
-    private final hfs_UsersSelector usersSelector = new hfs_UsersSelector();
-    private final hfs_PermissionSetsSelector permSetsSelector = new hfs_PermissionSetsSelector();
-
     /**
      * @description Rejects duplicates then provisions the partner in one
      * transaction from the supplied DTO.
      * @param dto the registration payload
+     * @return the created portal User Id
      */
-    public void registerPartner(hfs_RegistrationWrapper dto) {
+    public Id registerPartner(hfs_RegistrationWrapper dto) {
         hfs_Guard.notNull(dto, 'dto');
         hfs_Guard.notBlank(dto.name, 'name');
         hfs_Guard.notBlank(dto.email, 'email');
@@ -28,7 +25,7 @@ public without sharing class hfs_RegistrationServiceImpl implements hfs_Registra
             );
         }
 
-        provisionPartner(dto);
+        return provisionPartner(dto);
     }
 
     /**
@@ -53,21 +50,23 @@ public without sharing class hfs_RegistrationServiceImpl implements hfs_Registra
             );
         }
 
-        Id profileId = usersSelector.getProfileIdByName(config.Community_Plus_Profile_Name__c);
+        hfs_UsersSelector usersSelector = (hfs_UsersSelector) hfs_Application.Selector.newInstance(User.SObjectType);
+        Id profileId = usersSelector.selectProfileIdByName(config.Community_Plus_Profile_Name__c);
         if (profileId == null) {
             throw hfs_ApplicationException.build(
                 System.Label.hfs_Error_Provisioning_Failed,
                 hfs_Constants.PROVISIONING_FAILED
             );
         }
-        Id permSetId = permSetsSelector.getPermissionSetIdByName(config.Partner_Permission_Set_Name__c);
+        Id permSetId = ((hfs_PermissionSetsSelector) hfs_Application.Selector.newInstance(PermissionSet.SObjectType))
+            .selectIdByName(config.Partner_Permission_Set_Name__c);
 
         // Resolve the internal, role-bearing owner for the portal Account.
         // Salesforce requires the owner of a portal (community) account to hold a
         // UserRole before a portal User can be inserted under it. The guest /
         // running user has no role, so the Account must be owned by a configured
         // internal user (User.Username in the CMDT) who does.
-        Id portalAccountOwnerId = usersSelector.getUserIdByUsername(config.Portal_Account_Owner_Username__c);
+        Id portalAccountOwnerId = usersSelector.selectActiveIdByUsername(config.Portal_Account_Owner_Username__c);
 
         // Provision Account -> Contact -> inactive User -> permission-set
         // assignment through one Unit of Work. registerNew wires the child
@@ -157,19 +156,13 @@ public without sharing class hfs_RegistrationServiceImpl implements hfs_Registra
      * @return true when a matching Contact or User already exists
      */
     private Boolean isDuplicate(String email) {
-        List<Contact> contacts = contactsSelector.getContactsRecords(
-            'Email = :email',
-            new Map<String, Object>{ 'email' => email },
-            new List<String>{ 'Id' }
-        );
+        List<Contact> contacts = ((hfs_ContactsSelector) hfs_Application.Selector.newInstance(Contact.SObjectType))
+            .selectByEmail(new Set<String>{ email });
         if (!contacts.isEmpty()) {
             return true;
         }
-        List<User> users = usersSelector.getUsersRecords(
-            'Username = :username OR Email = :email',
-            new Map<String, Object>{ 'username' => buildUsername(email), 'email' => email },
-            new List<String>{ 'Id' }
-        );
+        List<User> users = ((hfs_UsersSelector) hfs_Application.Selector.newInstance(User.SObjectType))
+            .selectByUsernameOrEmail(buildUsername(email), email);
         return !users.isEmpty();
     }
 

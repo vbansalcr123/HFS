@@ -82,6 +82,11 @@ public class hfs_TestDataFactory {
     return String.valueOf(Datetime.now().getTime()) +
       String.valueOf(Math.abs(Crypto.getRandomInteger()));
   }
+  /**
+   * @description Create and insert active favourite rows.
+   * @param count Number of favourites to create.
+   * @return The inserted favourites.
+   */
   public static List<hfs_Favorite__c> createFavourites(Integer count) {
     List<hfs_Favorite__c> favourites = new List<hfs_Favorite__c>();
     for (Integer i = 0; i < count; i++) {

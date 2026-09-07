@@ -30,7 +30,9 @@ public class hfs_Application {
       hfs_Program_Enrolment__c.SObjectType => hfs_ProgramEnrolmentsSelector.class,
       hfs_Favorite__c.SObjectType => hfs_FavouritesSelector.class,
       Order.SObjectType => hfs_OrdersSelector.class,
-      Contact.SObjectType => hfs_ContactsSelector.class
+      Contact.SObjectType => hfs_ContactsSelector.class,
+      User.SObjectType => hfs_UsersSelector.class,
+      PermissionSet.SObjectType => hfs_PermissionSetsSelector.class
     }
   );
 
@@ -38,7 +40,8 @@ public class hfs_Application {
   public static final ServiceFactory Service = new ServiceFactory(
     new Map<Type, Type>{
       hfs_TrainingService.class => hfs_TrainingServiceImpl.class,
-      hfs_ToolboxService.class => hfs_ToolboxServiceImpl.class
+      hfs_ToolboxService.class => hfs_ToolboxServiceImpl.class,
+      hfs_RegistrationService.class => hfs_RegistrationServiceImpl.class
     }
   );
 
