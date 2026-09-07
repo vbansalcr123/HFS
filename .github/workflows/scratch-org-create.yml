@@ -167,13 +167,53 @@ jobs:
             sed -i "s/__TARGET_USERNAME__/$TARGET_USERNAME/g" "$f"
           done
 
-      # Step 6: Deploy the requested branch's source to the scratch org
+      # Step 6: Deploy the requested branch's source to the scratch org.
+      #
+      # Guest-user profiles (userLicense "Guest User License" / "Customer Community Login") are only
+      # provisioned by the platform as a side effect of their owning Network/Experience Cloud site
+      # being created (e.g. force-app/hfs-frontend/main/default/networks/Dry Run.network-meta.xml).
+      # Deploying a guest profile in the same transaction as that Network fails with "no UserLicense
+      # named Guest User License found" — the license doesn't exist yet at the point the Profile
+      # component is processed. So any such profile is deferred out of this first pass and deployed
+      # separately afterward, once the site (and its guest license) already exists in the org. Same
+      # fix as scratch-org-validation.yml — see that workflow's equivalent steps for more detail.
       - name: Deploy Source to Scratch Org
         env:
           SCRATCH_ALIAS: ${{ steps.create-scratch.outputs.scratch-alias }}
         run: |
+          mkdir -p /tmp/deferred-profiles
+          while IFS= read -r -d '' f; do
+            if grep -q '<userLicense>.*Guest' "$f"; then
+              rel="${f#force-app/}"
+              mkdir -p "/tmp/deferred-profiles/$(dirname "$rel")"
+              mv "$f" "/tmp/deferred-profiles/$rel"
+              echo "DEBUG: deferred guest-license profile: $rel"
+            fi
+          done < <(find force-app -name '*.profile-meta.xml' -print0)
+
           sf project deploy start \
             --source-dir force-app \
+            --target-org "$SCRATCH_ALIAS" \
+            --wait 30
+
+      # Step 6b: Deploy any guest-license profiles deferred above, now that their owning
+      # Network/site was created by the previous step and has provisioned the license they need.
+      - name: Deploy Guest-License Profiles
+        env:
+          SCRATCH_ALIAS: ${{ steps.create-scratch.outputs.scratch-alias }}
+        run: |
+          if [ -z "$(find /tmp/deferred-profiles -name '*.profile-meta.xml' 2>/dev/null)" ]; then
+            echo "No guest-license profiles deferred; skipping."
+            exit 0
+          fi
+
+          cp -r /tmp/deferred-profiles/. force-app/
+
+          # --metadata and --source-dir are mutually exclusive on "sf project deploy start". The
+          # profile(s) are already back under force-app (the default package directory per
+          # sfdx-project.json), so --metadata alone is enough to resolve and deploy them.
+          sf project deploy start \
+            --metadata Profile \
             --target-org "$SCRATCH_ALIAS" \
             --wait 30
 
