@@ -41,10 +41,6 @@
         <enabled>false</enabled>
     </classAccesses>
     <classAccesses>
-        <apexClass>hfs_Exception</apexClass>
-        <enabled>false</enabled>
-    </classAccesses>
-    <classAccesses>
         <apexClass>hfs_FavouritesSelector</apexClass>
         <enabled>false</enabled>
     </classAccesses>
