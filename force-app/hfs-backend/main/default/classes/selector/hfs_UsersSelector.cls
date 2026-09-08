@@ -42,21 +42,11 @@ public inherited sharing class hfs_UsersSelector extends fflib_SObjectSelector {
      * @param profileName the profile name
      * @return the Profile Id, or null when not found
      */
-    public Id selectProfileIdByName(String profileName) {
+    public Id getProfileIdByName(String profileName) {
         List<Profile> profiles = [
             SELECT Id FROM Profile WHERE Name = :profileName WITH SYSTEM_MODE LIMIT 1
         ];
         return profiles.isEmpty() ? null : profiles[0].Id;
-    }
-
-    /**
-     * @description Alias of selectProfileIdByName for call sites written against
-     * the shorter, non-fflib-style name.
-     * @param profileName the profile name
-     * @return the Profile Id, or null when not found
-     */
-    public Id getProfileIdByName(String profileName) {
-        return selectProfileIdByName(profileName);
     }
 
     /**
