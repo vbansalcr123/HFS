@@ -142,11 +142,6 @@
         <readable>false</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
-        <field>hfs_Course__c.hfs_ContentUrl__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
         <editable>false</editable>
         <field>hfs_Course__c.hfs_Description__c</field>
         <readable>false</readable>
