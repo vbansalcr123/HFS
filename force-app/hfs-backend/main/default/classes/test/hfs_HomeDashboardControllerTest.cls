@@ -343,7 +343,8 @@ private class hfs_HomeDashboardControllerTest {
    * @return a placeholder Account Id
    */
   private static Id flib_placeholderAccountId() {
-    return Account.SObjectType.getDescribe().getKeyPrefix() + '000000000000AAA';
+    return Account.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED)
+      .getKeyPrefix() + '000000000000AAA';
   }
 
   /**
