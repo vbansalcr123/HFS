@@ -287,6 +287,12 @@ private class hfs_RegistrationServiceTest {
 
         // Users selector + profile resolution.
         hfs_UsersSelector usersSel = (hfs_UsersSelector) hfs_Application.Selector.newInstance(User.SObjectType);
+        Assert.areEqual(User.SObjectType, usersSel.getSObjectType(), 'Users selector targets User');
+        Assert.areEqual(
+            new List<Schema.SObjectField>{ User.Id, User.Username, User.Email },
+            usersSel.getSObjectFieldList(),
+            'Users selector field list should be Id, Username, Email'
+        );
         Id profileId = usersSel.getProfileIdByName('System Administrator');
         Assert.isNotNull(profileId, 'Users selector should resolve a Profile Id');
 
@@ -306,8 +312,22 @@ private class hfs_RegistrationServiceTest {
         hfs_PermissionSetsSelector permSetsSel = (hfs_PermissionSetsSelector) hfs_Application.Selector.newInstance(
             PermissionSet.SObjectType
         );
+        Assert.areEqual(
+            PermissionSet.SObjectType,
+            permSetsSel.getSObjectType(),
+            'Permission sets selector targets PermissionSet'
+        );
+        Assert.areEqual(
+            new List<Schema.SObjectField>{ PermissionSet.Id, PermissionSet.Name },
+            permSetsSel.getSObjectFieldList(),
+            'Permission sets selector field list should be Id, Name'
+        );
         Id permSetId = permSetsSel.getPermissionSetIdByName('hfs_Dry_Run_Partner');
         Assert.isNotNull(permSetId, 'Permission set selector should resolve the partner permission set');
+        Assert.isNull(
+            permSetsSel.getPermissionSetIdByName('no.such.permission.set'),
+            'Unknown permission set name resolves to null'
+        );
 
         // Contacts Domain (fflib) — the full name is staged on LastName;
         // parsing happens via the Domain's defaulting. Resolve the Domain

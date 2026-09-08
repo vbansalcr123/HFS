@@ -22,23 +22,6 @@ public inherited sharing class hfs_UsersSelector extends fflib_SObjectSelector {
     }
 
     /**
-     * @description Selects Users by username or email in system mode, for duplicate
-     * detection inside the elevated guest provisioning flow.
-     * @param username the username to match
-     * @param email the email to match
-     * @return matching Users
-     */
-    public List<User> selectByUsernameOrEmail(String username, String email) {
-        fflib_QueryFactory qf = newQueryFactory();
-        qf.setCondition('Username = :username OR Email = :email');
-        return (List<User>) Database.queryWithBinds(
-            qf.toSOQL(),
-            new Map<String, Object>{ 'username' => username, 'email' => email },
-            AccessLevel.SYSTEM_MODE
-        );
-    }
-
-    /**
      * @description Generic, injection-safe query over User, for callers that need
      * an arbitrary field list / WHERE clause rather than the fixed selector fields.
      * @param whereClause SOQL WHERE body (no leading WHERE), using named binds
@@ -74,26 +57,6 @@ public inherited sharing class hfs_UsersSelector extends fflib_SObjectSelector {
      */
     public Id getProfileIdByName(String profileName) {
         return selectProfileIdByName(profileName);
-    }
-
-    /**
-     * @description Resolves an active User Id by username in system mode (guest
-     * context). Used to look up the internal role-bearing owner for the portal
-     * Account so portal User creation succeeds.
-     * @param username the User.Username to resolve
-     * @return the User Id, or null when not found
-     */
-    public Id selectActiveIdByUsername(String username) {
-        if (String.isBlank(username)) {
-            return null;
-        }
-        List<User> owners = [
-            SELECT Id FROM User
-            WHERE Username = :username AND IsActive = true
-            WITH SYSTEM_MODE
-            LIMIT 1
-        ];
-        return owners.isEmpty() ? null : owners[0].Id;
     }
 
     /**
