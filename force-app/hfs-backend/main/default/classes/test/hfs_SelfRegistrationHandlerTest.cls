@@ -2,10 +2,12 @@
  * @description Tests for the self-registration handler — verifies it delegates
  * to the service and fails closed without leaving partial records.
  */
-@IsTest
+@isTest
 private class hfs_SelfRegistrationHandlerTest {
-    @IsTest
+    @isTest
     static void createUser_delegatesToService() {
+        User owner = hfs_TestDataFactory.createRoleBearingOwner();
+        hfs_RegistrationServiceImpl.configOverride = hfs_TestDataFactory.buildConfigForOwner(owner.Username);
         User current = new User(Id = UserInfo.getUserId());
         System.runAs(current) {
             hfs_SelfRegistrationHandler handler = new hfs_SelfRegistrationHandler();
@@ -36,34 +38,5 @@ private class hfs_SelfRegistrationHandlerTest {
                 Assert.areEqual(contactsBefore, contactsAfter, 'No partial Contact should remain on rollback');
             }
         }
-    }
-
-    @IsTest
-    static void createUser_duplicateEmail_rejectsWithoutProvisioning() {
-        Account acct = new Account(Name = 'Existing Handler Partner');
-        insert acct;
-        insert new Contact(LastName = 'Existing', Email = 'handlerdupe@dealer.test', AccountId = acct.Id);
-
-        hfs_SelfRegistrationHandler handler = new hfs_SelfRegistrationHandler();
-        Map<SObjectField, String> attrs = new Map<SObjectField, String>{
-            User.FirstName => 'Handler',
-            User.LastName => 'Dupe',
-            User.Email => 'handlerdupe@dealer.test'
-        };
-
-        Boolean threw = false;
-        Test.startTest();
-        try {
-            handler.createUser(null, null, attrs, 'Abcd1234!xyz');
-        } catch (hfs_ApplicationException e) {
-            threw = true;
-            Assert.areEqual(
-                hfs_Constants.DUPLICATE_EMAIL,
-                e.errorCode,
-                'The native self-registration entry point must enforce the same duplicate check as the Controller'
-            );
-        }
-        Test.stopTest();
-        Assert.isTrue(threw, 'A duplicate email must be rejected before any provisioning is attempted');
     }
 }

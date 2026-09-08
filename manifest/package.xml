@@ -1,62 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
+        <members>hfs_Registration_Config__mdt</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>hfs_Registration_Config.Default</members>
+        <name>CustomMetadata</name>
+    </types>
+    <types>
+        <members>hfs_Response</members>
+        <members>hfs_Guard</members>
+        <members>hfs_Constants</members>
+        <members>hfs_Exception</members>
+        <members>hfs_RegistrationWrapper</members>
+        <members>hfs_ContactsGenericSelector</members>
+        <members>hfs_UsersSelector</members>
+        <members>hfs_PermissionSetsSelector</members>
+        <members>hfs_ContactsDomain</members>
+        <members>hfs_ContactsSelector</members>
+        <members>hfs_Application</members>
+        <members>hfs_RegistrationService</members>
+        <members>hfs_RegistrationServiceImpl</members>
+        <members>hfs_RegistrationController</members>
+        <members>hfs_SelfRegistrationHandler</members>
+        <members>hfs_AssignPartnerPermSetQueueable</members>
+        <members>hfs_TestDataFactory</members>
+        <members>hfs_RegistrationServiceTest</members>
+        <members>hfs_RegistrationControllerTest</members>
+        <members>hfs_SelfRegistrationHandlerTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>hfs_selfRegistration</members>
+        <members>hfs_registrationHero</members>
+        <members>hfs_registrationForm</members>
+        <members>hfs_errorUtils</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <types>
+        <members>hfs_Dry_Run_Site_Guest_User</members>
         <members>hfs_Dry_Run_Partner</members>
         <name>PermissionSet</name>
     </types>
     <types>
-        <members>site/Dry_Run1.sfdc_cms__site/Dry_Run1</members>
-        <members>site/Dry_Run1.sfdc_cms__route/Home</members>
-        <members>site/Dry_Run1.sfdc_cms__view/home</members>
-        <name>DigitalExperience</name>
+        <members>Dry Run Profile</members>
+        <name>Profile</name>
     </types>
     <types>
-        <members>hfs_Alert__c</members>
-        <members>hfs_Download__c</members>
-        <members>hfs_Home_Dashboard_Preview__mdt</members>
-        <name>CustomObject</name>
-    </types>
-    <types>
-        <members>hfs_Home_Dashboard_Preview.Default</members>
-        <name>CustomMetadata</name>
-    </types>
-    <types>
-        <members>hfs_Home_Dashboard_Preview__mdt-Home Dashboard Preview Layout</members>
-        <name>Layout</name>
-    </types>
-    <types>
-        <members>hfs_Application</members>
-        <members>hfs_Constants</members>
-        <members>hfs_HomeDashboardController</members>
-        <members>hfs_HomeDashboardControllerTest</members>
-        <members>hfs_HomeDashboardDTO</members>
-        <members>hfs_HomeDashboardService</members>
-        <members>hfs_HomeDashboardServiceImpl</members>
-        <members>hfs_AlertsSelector</members>
-        <members>hfs_CasesSelector</members>
-        <members>hfs_DownloadsSelector</members>
-        <members>hfs_TestDataFactory</members>
-        <name>ApexClass</name>
-    </types>
-    <types>
-        <members>hfs_accountSummary</members>
-        <members>hfs_announcementBanner</members>
-        <members>hfs_homeDashboard</members>
-        <members>hfs_summaryTile</members>
-        <name>LightningComponentBundle</name>
-    </types>
-    <types>
-        <members>hfs_Error_Home_Dashboard_Load_Failed</members>
-        <members>hfs_HomeDashboard_AccountNumberPrefix</members>
-        <members>hfs_HomeDashboard_Greeting</members>
-        <members>hfs_HomeDashboard_Loading</members>
-        <members>hfs_HomeDashboard_TierPrefix</members>
-        <members>hfs_HomeDashboard_TileActiveOrders</members>
-        <members>hfs_HomeDashboard_TileDownloads</members>
-        <members>hfs_HomeDashboard_TileOpenRequests</members>
-        <members>hfs_HomeDashboard_TileTraining</members>
-        <members>hfs_HomeDashboard_TrainingCoursesSuffix</members>
-        <members>hfs_HomeDashboard_Unavailable</members>
+        <members>hfs_Register_Title</members>
+        <members>hfs_Register_Subtitle</members>
+        <members>hfs_Register_Hero_Title</members>
+        <members>hfs_Register_Hero_Body</members>
+        <members>hfs_Field_Name</members>
+        <members>hfs_Field_Company</members>
+        <members>hfs_Field_Phone</members>
+        <members>hfs_Field_Partner_Type</members>
+        <members>hfs_Field_Partner_Type_Placeholder</members>
+        <members>hfs_Field_Territory</members>
+        <members>hfs_Field_Message</members>
+        <members>hfs_Partner_Type_Dealer</members>
+        <members>hfs_Partner_Type_Distributor</members>
+        <members>hfs_Field_Email</members>
+        <members>hfs_Field_Password</members>
+        <members>hfs_Field_Confirm_Password</members>
+        <members>hfs_Msg_Password_Mismatch</members>
+        <members>hfs_Button_Register</members>
+        <members>hfs_Link_Sign_In</members>
+        <members>hfs_Msg_Required_Fields</members>
+        <members>hfs_Msg_Invalid_Email</members>
+        <members>hfs_Msg_Generic_Error</members>
+        <members>hfs_Msg_Check_Email</members>
+        <members>hfs_Error_Duplicate_Email</members>
+        <members>hfs_Error_Provisioning_Failed</members>
+        <members>hfs_Error_Config_Missing</members>
         <name>CustomLabel</name>
     </types>
     <version>64.0</version>

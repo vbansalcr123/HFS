@@ -15,6 +15,9 @@ export default class Hfs_registrationForm extends LightningElement {
     @api labelName;
     @api labelPhone;
     @api labelEmail;
+    @api labelPassword;
+    @api labelConfirmPassword;
+    @api labelPasswordMismatch;
     @api labelPartnerType;
     @api labelPartnerTypePlaceholder;
     @api labelTerritory;
@@ -33,6 +36,8 @@ export default class Hfs_registrationForm extends LightningElement {
     name = '';
     phone = '';
     email = '';
+    password = '';
+    confirmPassword = '';
     partnerType = '';
     territory = '';
     message = '';
@@ -51,6 +56,14 @@ export default class Hfs_registrationForm extends LightningElement {
 
     handleEmailChange(event) {
         this.email = event.target.value;
+    }
+
+    handlePasswordChange(event) {
+        this.password = event.target.value;
+    }
+
+    handleConfirmPasswordChange(event) {
+        this.confirmPassword = event.target.value;
     }
 
     handlePartnerTypeChange(event) {
@@ -73,6 +86,15 @@ export default class Hfs_registrationForm extends LightningElement {
         if (this.isBusy) {
             return;
         }
+        // Enforce that the two password entries match before native validation.
+        const confirmInput = this.template.querySelector(
+            'lightning-input[data-field="confirmPassword"]'
+        );
+        if (confirmInput) {
+            const mismatch =
+                this.password !== this.confirmPassword ? this.labelPasswordMismatch : '';
+            confirmInput.setCustomValidity(mismatch);
+        }
         if (!this.reportValidity()) {
             return;
         }
@@ -83,6 +105,7 @@ export default class Hfs_registrationForm extends LightningElement {
                     name: this.name,
                     phone: this.phone,
                     email: this.email,
+                    password: this.password,
                     partnerType: this.partnerType,
                     territory: this.territory,
                     message: this.message

@@ -400,4 +400,28 @@
         <shortDescription>Tile unavailable state text</shortDescription>
         <value>Unavailable</value>
     </labels>
+    <labels>
+        <fullName>hfs_Field_Confirm_Password</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Confirm password field label</shortDescription>
+        <value>Confirm password</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Field_Password</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Password field label</shortDescription>
+        <value>Password</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Msg_Password_Mismatch</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Password mismatch message</shortDescription>
+        <value>The passwords you entered do not match.</value>
+    </labels>
 </CustomLabels>

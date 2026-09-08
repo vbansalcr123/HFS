@@ -25,14 +25,14 @@ export default class Hfs_selfRegistration extends NavigationMixin(LightningEleme
      * Handles the `submit` event from the form section: validate, guard against
      * double-submit, call Apex, then navigate to the confirmation page.
      * @param {CustomEvent} event detail = { company, name, phone, email,
-     *   partnerType, territory, message }
+     *   password, partnerType, territory, message }
      */
     async handleSubmit(event) {
         this.errorMessage = '';
         if (this.isBusy) {
             return;
         }
-        const { company, name, phone, email, partnerType, territory, message } = event.detail;
+        const { company, name, phone, email, password, partnerType, territory, message } = event.detail;
         if (!company || !name || !partnerType || !EMAIL_REGEX.test(email)) {
             this.errorMessage = this.labels.msgInvalidEmail;
             return;
@@ -40,7 +40,7 @@ export default class Hfs_selfRegistration extends NavigationMixin(LightningEleme
 
         this.isBusy = true;
         try {
-            const dto = { company, name, phone, email, partnerType, territory, message };
+            const dto = { company, name, phone, email, password, partnerType, territory, message };
             const response = await register({ dto });
             const result = parseResponse(response);
             if (result.ok) {

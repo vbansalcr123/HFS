@@ -6,6 +6,8 @@ import FIELD_COMPANY from '@salesforce/label/c.hfs_Field_Company';
 import FIELD_NAME from '@salesforce/label/c.hfs_Field_Name';
 import FIELD_PHONE from '@salesforce/label/c.hfs_Field_Phone';
 import FIELD_EMAIL from '@salesforce/label/c.hfs_Field_Email';
+import FIELD_PASSWORD from '@salesforce/label/c.hfs_Field_Password';
+import FIELD_CONFIRM_PASSWORD from '@salesforce/label/c.hfs_Field_Confirm_Password';
 import FIELD_PARTNER_TYPE from '@salesforce/label/c.hfs_Field_Partner_Type';
 import FIELD_PARTNER_TYPE_PLACEHOLDER from '@salesforce/label/c.hfs_Field_Partner_Type_Placeholder';
 import FIELD_TERRITORY from '@salesforce/label/c.hfs_Field_Territory';
@@ -16,6 +18,7 @@ import BTN_REGISTER from '@salesforce/label/c.hfs_Button_Register';
 import LINK_SIGN_IN from '@salesforce/label/c.hfs_Link_Sign_In';
 import MSG_REQUIRED from '@salesforce/label/c.hfs_Msg_Required_Fields';
 import MSG_INVALID_EMAIL from '@salesforce/label/c.hfs_Msg_Invalid_Email';
+import MSG_PASSWORD_MISMATCH from '@salesforce/label/c.hfs_Msg_Password_Mismatch';
 import MSG_CHECK_EMAIL from '@salesforce/label/c.hfs_Msg_Check_Email';
 
 export const labels = {
@@ -27,6 +30,8 @@ export const labels = {
     fieldName: FIELD_NAME,
     fieldPhone: FIELD_PHONE,
     fieldEmail: FIELD_EMAIL,
+    fieldPassword: FIELD_PASSWORD,
+    fieldConfirmPassword: FIELD_CONFIRM_PASSWORD,
     fieldPartnerType: FIELD_PARTNER_TYPE,
     fieldPartnerTypePlaceholder: FIELD_PARTNER_TYPE_PLACEHOLDER,
     fieldTerritory: FIELD_TERRITORY,
@@ -35,6 +40,7 @@ export const labels = {
     linkSignIn: LINK_SIGN_IN,
     msgRequired: MSG_REQUIRED,
     msgInvalidEmail: MSG_INVALID_EMAIL,
+    msgPasswordMismatch: MSG_PASSWORD_MISMATCH,
     msgCheckEmail: MSG_CHECK_EMAIL
 };
 

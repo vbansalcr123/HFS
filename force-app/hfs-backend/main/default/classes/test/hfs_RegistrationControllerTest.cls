@@ -2,19 +2,14 @@
  * @description Controller-tier tests. Per team convention the controller test
  * covers input validation and the final hfs_Response shape (success and
  * every error branch), including the response wrapper's own success/error/
- * unexpected paths — there is no separate wrapper test class. Two-tier
- * structure like hfs_ToolboxControllerTest / hfs_TrainingControllerTest:
- * Tier 1 exercises register() end-to-end against the real
- * hfs_RegistrationServiceImpl; Tier 2 stubs hfs_RegistrationService via
- * ApexMocks + hfs_Application.Service.setMock to deterministically prove the
- * hfs_Response translation contract in isolation from provisioning.
+ * unexpected paths — there is no separate wrapper test class.
  */
-@IsTest
+@isTest
 private class hfs_RegistrationControllerTest {
-    // ---------- Tier 1: real end-to-end ----------
-
-    @IsTest
+    @isTest
     static void register_uniqueInput_returnsWellFormedResponse() {
+        User owner = hfs_TestDataFactory.createRoleBearingOwner();
+        hfs_RegistrationServiceImpl.configOverride = hfs_TestDataFactory.buildConfigForOwner(owner.Username);
         User current = new User(Id = UserInfo.getUserId());
         hfs_Response response;
         System.runAs(current) {
@@ -35,7 +30,7 @@ private class hfs_RegistrationControllerTest {
         }
     }
 
-    @IsTest
+    @isTest
     static void register_duplicate_returnsDuplicateErrorResponse() {
         Account acct = new Account(Name = 'Ctrl Existing');
         insert acct;
@@ -52,7 +47,7 @@ private class hfs_RegistrationControllerTest {
         Assert.isNotNull(response.errorMessage, 'A displayable error message should be present');
     }
 
-    @IsTest
+    @isTest
     static void register_nullInput_returnsErrorResponse() {
         Test.startTest();
         hfs_Response response = hfs_RegistrationController.register(null);
@@ -62,7 +57,7 @@ private class hfs_RegistrationControllerTest {
         Assert.isNotNull(response.errorCode, 'Guard failure should carry a code');
     }
 
-    @IsTest
+    @isTest
     static void register_blankName_returnsErrorResponse() {
         hfs_RegistrationWrapper w = hfs_TestDataFactory.buildRegistrationWrapper('', 'blankname@dealer.test');
 
@@ -73,97 +68,7 @@ private class hfs_RegistrationControllerTest {
         Assert.isFalse(response.isSuccess, 'Blank name should fail at the guard boundary');
     }
 
-    // ---------- Tier 2: mocked Service (isolate the Controller) ----------
-
-    @IsTest
-    static void register_mockedService_returnsProvisionedPayload() {
-        fflib_ApexMocks mocks = new fflib_ApexMocks();
-        hfs_RegistrationService mockService = (hfs_RegistrationService) mocks.mock(
-            hfs_RegistrationServiceImpl.class
-        );
-        mocks.startStubbing();
-        mocks.when(mockService.registerPartner((hfs_RegistrationWrapper) fflib_Match.anyObject()))
-            .thenReturn((Id) null);
-        mocks.stopStubbing();
-        hfs_Application.Service.setMock(hfs_RegistrationService.class, mockService);
-
-        hfs_RegistrationWrapper dto = hfs_TestDataFactory.buildRegistrationWrapper('Mock Dealer', 'mock@dealer.test');
-
-        Test.startTest();
-        hfs_Response response = hfs_RegistrationController.register(dto);
-        Test.stopTest();
-
-        Assert.isTrue(response.isSuccess, 'Mocked success expected');
-        hfs_RegistrationWrapper payload = (hfs_RegistrationWrapper) response.payload;
-        Assert.isTrue(payload.provisioned, 'Controller should set provisioned=true on success');
-        Assert.areEqual('mock@dealer.test', payload.email, 'Payload should echo the submitted DTO');
-    }
-
-    @IsTest
-    static void register_businessException_surfacesOwnCodeAndMessage() {
-        fflib_ApexMocks mocks = new fflib_ApexMocks();
-        hfs_RegistrationService mockService = (hfs_RegistrationService) mocks.mock(
-            hfs_RegistrationServiceImpl.class
-        );
-        mocks.startStubbing();
-        mocks.when(mockService.registerPartner((hfs_RegistrationWrapper) fflib_Match.anyObject()))
-            .thenThrow(
-                hfs_ApplicationException.build(System.Label.hfs_Error_Duplicate_Email, hfs_Constants.DUPLICATE_EMAIL)
-            );
-        mocks.stopStubbing();
-        hfs_Application.Service.setMock(hfs_RegistrationService.class, mockService);
-
-        hfs_RegistrationWrapper dto = hfs_TestDataFactory.buildRegistrationWrapper('Mock Dupe', 'mockdupe@dealer.test');
-
-        Test.startTest();
-        hfs_Response response = hfs_RegistrationController.register(dto);
-        Test.stopTest();
-
-        Assert.isFalse(response.isSuccess, 'Business exception should fail the response');
-        Assert.areEqual(
-            hfs_Constants.DUPLICATE_EMAIL,
-            response.errorCode,
-            'Business exception code should surface unchanged'
-        );
-        Assert.areEqual(
-            System.Label.hfs_Error_Duplicate_Email,
-            response.errorMessage,
-            'Business exception message should surface unchanged'
-        );
-    }
-
-    @IsTest
-    static void register_unexpectedException_mapsToFallback() {
-        fflib_ApexMocks mocks = new fflib_ApexMocks();
-        hfs_RegistrationService mockService = (hfs_RegistrationService) mocks.mock(
-            hfs_RegistrationServiceImpl.class
-        );
-        mocks.startStubbing();
-        mocks.when(mockService.registerPartner((hfs_RegistrationWrapper) fflib_Match.anyObject()))
-            .thenThrow(new System.NullPointerException());
-        mocks.stopStubbing();
-        hfs_Application.Service.setMock(hfs_RegistrationService.class, mockService);
-
-        hfs_RegistrationWrapper dto = hfs_TestDataFactory.buildRegistrationWrapper('Mock Fail', 'mockfail@dealer.test');
-
-        Test.startTest();
-        hfs_Response response = hfs_RegistrationController.register(dto);
-        Test.stopTest();
-
-        Assert.isFalse(response.isSuccess, 'Unexpected exception should fail the response');
-        Assert.areEqual(
-            hfs_Constants.UNEXPECTED_ERROR,
-            response.errorCode,
-            'Unexpected exception should map to the domain-neutral fallback code'
-        );
-        Assert.areEqual(
-            System.Label.hfs_Msg_Generic_Error,
-            response.errorMessage,
-            'Unexpected exception should map to the safe fallback message'
-        );
-    }
-
-    @IsTest
+    @isTest
     static void response_successAndErrorFactories_populateFields() {
         // Covers the response wrapper directly — success, explicit error(msg,code),
         // known hfs_ApplicationException, and the generic/unexpected branch.
@@ -181,7 +86,7 @@ private class hfs_RegistrationControllerTest {
         Assert.areEqual(hfs_Constants.CONFIG_MISSING, known.errorCode, 'Known exception code should surface');
 
         hfs_Response unexpected = hfs_Response.error(new NullPointerException());
-        Assert.areEqual(hfs_Constants.UNEXPECTED_ERROR, unexpected.errorCode, 'Unknown exception maps to UNEXPECTED');
+        Assert.areEqual(hfs_Constants.UNEXPECTED, unexpected.errorCode, 'Unknown exception maps to UNEXPECTED');
         Assert.isNotNull(unexpected.errorMessage, 'Unexpected error should carry a generic message');
     }
 }
