@@ -50,17 +50,6 @@ public class hfs_Application {
   );
 
   /**
-   * Domain factory - resolves a Domain implementation for an SObjectType. Built on the
-   * Selector factory above so domain constructors can be resolved via the same registry.
-   */
-  public static final fflib_Application.DomainFactory Domain = new fflib_Application.DomainFactory(
-    hfs_Application.Selector,
-    new Map<Schema.SObjectType, Type>{
-      Contact.SObjectType => hfs_ContactsDomain.Constructor.class
-    }
-  );
-
-  /**
    * @description Domain factory - resolves a Domain implementation for an SObjectType so callers
    * never new a Domain constructor directly (HFS-34 write layer).
    */
@@ -68,7 +57,8 @@ public class hfs_Application {
     hfs_Application.Selector,
     new Map<SObjectType, Type>{
       hfs_CourseProgress__c.SObjectType => hfs_CourseProgressDomain.Constructor.class,
-      hfs_CourseAttempt__c.SObjectType => hfs_CourseAttemptDomain.Constructor.class
+      hfs_CourseAttempt__c.SObjectType => hfs_CourseAttemptDomain.Constructor.class,
+      Contact.SObjectType => hfs_ContactsDomain.Constructor.class
     }
   );
 
