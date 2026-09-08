@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
     <labels>
         <fullName>hfs_Training_PageTitle</fullName>
@@ -54,8 +54,7 @@
         <language>en_US</language>
         <protected>false</protected>
         <shortDescription>First-time zero state message</shortDescription>
-        <value
-    >You have not started any courses yet. Browse the catalog below to begin.</value>
+        <value>You have not started any courses yet. Browse the catalog below to begin.</value>
     </labels>
     <labels>
         <fullName>hfs_Training_EmptyStateMessage</fullName>
@@ -71,8 +70,7 @@
         <language>en_US</language>
         <protected>false</protected>
         <shortDescription>Training source unavailable message</shortDescription>
-        <value
-    >Training information is temporarily unavailable. Please try again later.</value>
+        <value>Training information is temporarily unavailable. Please try again later.</value>
     </labels>
     <labels>
         <fullName>hfs_Training_LoadingMessage</fullName>
@@ -119,18 +117,15 @@
         <categories>Training</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription
-    >Error message when training view cannot be built</shortDescription>
-        <value
-    >We could not load your training information. Please try again later.</value>
+        <shortDescription>Error message when training view cannot be built</shortDescription>
+        <value>We could not load your training information. Please try again later.</value>
     </labels>
     <labels>
         <fullName>hfs_Error_Unexpected</fullName>
         <categories>Shared</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription
-    >Domain-neutral message for an unexpected system error</shortDescription>
+        <shortDescription>Domain-neutral message for an unexpected system error</shortDescription>
         <value>Something went wrong. Please try again later.</value>
     </labels>
     <labels>
@@ -316,5 +311,93 @@
         <protected>false</protected>
         <shortDescription>Register page title</shortDescription>
         <value>Request portal access</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Home_Dashboard_Load_Failed</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Home dashboard load failed</shortDescription>
+        <value>We could not load your dashboard right now. Please try again shortly.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_HomeDashboard_AccountNumberPrefix</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Account number prefix in the account summary line</shortDescription>
+        <value>Account #</value>
+    </labels>
+    <labels>
+        <fullName>hfs_HomeDashboard_Greeting</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Greeting prefix</shortDescription>
+        <value>Good morning,</value>
+    </labels>
+    <labels>
+        <fullName>hfs_HomeDashboard_Loading</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Loading state text</shortDescription>
+        <value>Loading…</value>
+    </labels>
+    <labels>
+        <fullName>hfs_HomeDashboard_TierPrefix</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Partner tier prefix in the account summary line</shortDescription>
+        <value>Tier:</value>
+    </labels>
+    <labels>
+        <fullName>hfs_HomeDashboard_TileActiveOrders</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Active Orders tile label</shortDescription>
+        <value>Active Orders</value>
+    </labels>
+    <labels>
+        <fullName>hfs_HomeDashboard_TileDownloads</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Downloads This Month tile label</shortDescription>
+        <value>Downloads This Month</value>
+    </labels>
+    <labels>
+        <fullName>hfs_HomeDashboard_TileOpenRequests</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Open Requests tile label</shortDescription>
+        <value>Open Requests</value>
+    </labels>
+    <labels>
+        <fullName>hfs_HomeDashboard_TileTraining</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Training Progress tile label</shortDescription>
+        <value>Training Progress</value>
+    </labels>
+    <labels>
+        <fullName>hfs_HomeDashboard_TrainingCoursesSuffix</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Courses suffix for training tile value</shortDescription>
+        <value>courses</value>
+    </labels>
+    <labels>
+        <fullName>hfs_HomeDashboard_Unavailable</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Tile unavailable state text</shortDescription>
+        <value>Unavailable</value>
     </labels>
 </CustomLabels>

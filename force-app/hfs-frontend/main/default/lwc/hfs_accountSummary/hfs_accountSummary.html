@@ -1,0 +1,17 @@
+<template>
+    <div class="summary">
+        <h1 class="summary__greeting">{greetingText}</h1>
+        <template lwc:if={summaryParts.length}>
+            <p class="summary__account">
+                <template for:each={summaryParts} for:item="part" for:index="idx">
+                    <span key={part.key}>
+                        <template lwc:if={idx}>
+                            <span class="summary__sep" aria-hidden="true">·</span>
+                        </template>
+                        {part.text}
+                    </span>
+                </template>
+            </p>
+        </template>
+    </div>
+</template>

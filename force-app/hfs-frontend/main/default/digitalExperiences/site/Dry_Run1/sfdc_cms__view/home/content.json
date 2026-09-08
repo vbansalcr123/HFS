@@ -9,19 +9,41 @@
             "backgroundImageConfig" : "",
             "backgroundImageOverlay" : "rgba(0,0,0,0)",
             "componentSpacerSize" : "",
+            "dxpStyle" : { },
             "layoutDirectionDesktop" : "row",
             "layoutDirectionMobile" : "column",
             "layoutDirectionTablet" : "column",
             "maxContentWidth" : "",
             "sectionColumnGutterWidth" : "",
-            "sectionConfig" : "{\"UUID\":\"37328e77-690f-4c56-9e98-db8c72ad19b0\",\"columns\":[{\"UUID\":\"71422b20-860f-439f-bb42-c1c5be57dcb3\",\"columnName\":\"Column 1\",\"columnKey\":\"col1\",\"columnWidth\":\"12\",\"seedComponents\":null}]}",
+            "sectionConfig" : "{\"UUID\":\"37328e77-690f-4c56-9e98-db8c72ad19b0\",\"columns\":[{\"UUID\":\"71422b20-860f-439f-bb42-c1c5be57dcb3\",\"columnName\":\"Column 1\",\"columnKey\":\"col1\",\"columnWidth\":\"3\",\"seedComponents\":null},{\"UUID\":\"9b1f2c44-3d8e-4a71-bc90-5f6a2e0d8c11\",\"columnName\":\"Column 2\",\"columnKey\":\"col2\",\"columnWidth\":\"9\",\"seedComponents\":null}]}",
             "sectionMinHeight" : "",
             "sectionVerticalAlign" : "flex-start"
           },
           "children" : [ {
+            "children" : [ {
+              "attributes" : {
+                "dxpStyle" : { }
+              },
+              "definition" : "c:hfs_myToolbox",
+              "id" : "b2e7a1d0-4c33-4f18-9a52-1e0c7d9b6a24",
+              "type" : "component"
+            } ],
             "id" : "71422b20-860f-439f-bb42-c1c5be57dcb3",
             "name" : "col1",
             "title" : "Column 1",
+            "type" : "region"
+          }, {
+            "children" : [ {
+              "attributes" : {
+                "dxpStyle" : { }
+              },
+              "definition" : "c:hfs_homeDashboard",
+              "id" : "c8f4b6e2-7a19-4d05-8b31-2f9e0a1c4d76",
+              "type" : "component"
+            } ],
+            "id" : "9b1f2c44-3d8e-4a71-bc90-5f6a2e0d8c11",
+            "name" : "col2",
+            "title" : "Column 2",
             "type" : "region"
           } ],
           "definition" : "community_layout:section",
@@ -37,6 +59,7 @@
           "attributes" : {
             "customHeadTags" : "",
             "description" : "",
+            "dxpStyle" : { },
             "pageTitle" : "Home",
             "recordId" : "{!recordId}"
           },

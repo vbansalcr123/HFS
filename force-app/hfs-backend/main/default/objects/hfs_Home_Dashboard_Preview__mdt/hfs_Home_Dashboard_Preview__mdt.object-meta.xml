@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Internal preview configuration for the Home dashboard (HFS-32). Used ONLY as a fallback for internal users (e.g. admins/testers) who have no partner Account, so the dashboard can be tested before Customer Community self-registration exists. Real partner users always resolve via Contact-&gt;Account and never use this config.</description>
+    <label>Home Dashboard Preview</label>
+    <pluralLabel>Home Dashboard Preview</pluralLabel>
+    <visibility>Public</visibility>
+</CustomObject>

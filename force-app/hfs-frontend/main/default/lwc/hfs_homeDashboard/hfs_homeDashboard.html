@@ -1,0 +1,63 @@
+<template>
+    <div class="dashboard">
+        <template lwc:if={loading}>
+            <div class="dashboard__loading">
+                <div class="dashboard__tiles">
+                    <c-hfs_summary-tile loading label=" " accent="#DEE1E6"></c-hfs_summary-tile>
+                    <c-hfs_summary-tile loading label=" " accent="#DEE1E6"></c-hfs_summary-tile>
+                    <c-hfs_summary-tile loading label=" " accent="#DEE1E6"></c-hfs_summary-tile>
+                    <c-hfs_summary-tile loading label=" " accent="#DEE1E6"></c-hfs_summary-tile>
+                </div>
+            </div>
+        </template>
+
+        <template lwc:elseif={hasError}>
+            <div class="dashboard__unavailable" role="alert">
+                <lightning-icon icon-name="utility:warning" size="small"></lightning-icon>
+                <p>Your dashboard is unavailable right now. Please try again shortly.</p>
+            </div>
+        </template>
+
+        <template lwc:else>
+            <template lwc:if={showBanner}>
+                <c-hfs_announcement-banner
+                    title={announcement.title}
+                    message={announcement.message}
+                    cta-label={announcement.ctaLabel}
+                    cta-url={announcement.ctaUrl}
+                ></c-hfs_announcement-banner>
+            </template>
+
+            <template lwc:if={accountSummary}>
+                <c-hfs_account-summary
+                    greeting-name={accountSummary.greetingName}
+                    account-name={accountSummary.accountName}
+                    address-line={accountSummary.addressLine}
+                    account-number={accountSummary.accountNumber}
+                    tier={accountSummary.tier}
+                ></c-hfs_account-summary>
+            </template>
+
+            <div class="dashboard__tiles">
+                <template for:each={tiles} for:item="tile">
+                    <c-hfs_summary-tile
+                        key={tile.key}
+                        label={tile.label}
+                        value={tile.value}
+                        supporting-detail={tile.supportingDetail}
+                        status={tile.status}
+                        progress-percent={tile.progressPercent}
+                        accent={tile.accent}
+                    >
+                        <lightning-icon
+                            slot="icon"
+                            icon-name={tile.icon}
+                            size="x-small"
+                            alternative-text={tile.label}
+                        ></lightning-icon>
+                    </c-hfs_summary-tile>
+                </template>
+            </div>
+        </template>
+    </div>
+</template>

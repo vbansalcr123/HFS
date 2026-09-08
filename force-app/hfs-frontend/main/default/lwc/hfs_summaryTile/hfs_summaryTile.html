@@ -1,0 +1,38 @@
+<template>
+    <article class="tile" style={accentStyle} tabindex="0">
+        <header class="tile__header">
+            <span class="tile__label">{label}</span>
+            <slot name="icon"></slot>
+        </header>
+
+        <template lwc:if={loading}>
+            <div class="tile__loading" role="status">
+                <lightning-spinner alternative-text={labels.loading} size="small"></lightning-spinner>
+                <span class="slds-assistive-text">{labels.loading}</span>
+            </div>
+        </template>
+
+        <template lwc:elseif={isUnavailable}>
+            <p class="tile__unavailable">{labels.unavailable}</p>
+        </template>
+
+        <template lwc:else>
+            <p class="tile__value" aria-live="polite">{value}</p>
+            <template lwc:if={showProgress}>
+                <div
+                    class="tile__progress"
+                    role="progressbar"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow={progressPercent}
+                    aria-label={progressLabel}
+                >
+                    <span class="tile__progress-fill" style={progressStyle}></span>
+                </div>
+            </template>
+            <template lwc:if={supportingDetail}>
+                <p class="tile__detail">{supportingDetail}</p>
+            </template>
+        </template>
+    </article>
+</template>
