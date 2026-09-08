@@ -3,10 +3,16 @@
  * the complete flow end-to-end — duplicate rejection, guard failures, fail-closed
  * provisioning, and the permission-set assignment — and directly covers the
  * Selector and Domain helpers it orchestrates (there are no standalone
- * selector / domain test classes).
+ * selector / domain test classes). Tier 1 (below) runs real DML, so whether
+ * provisioning actually succeeds depends on org config (profile/permission-set/
+ * portal-owner existing) that this test can't control; Tier 2 mocks a Selector
+ * via hfs_Application.Selector.setMock, like hfs_ToolboxServiceImplTest mocks
+ * its Selectors, to make the fail-closed control-flow deterministic.
  */
 @isTest
 private class hfs_RegistrationServiceTest {
+    // ---------- Tier 1: real end-to-end, no mocks ----------
+
     @isTest
     static void registerPartner_duplicateContact_throwsDuplicate() {
         Account acct = new Account(Name = 'Existing Partner');
@@ -219,17 +225,60 @@ private class hfs_RegistrationServiceTest {
         Assert.areEqual(1, assignments.size(), 'Partner permission set should be assigned');
     }
 
+    // ---------- Tier 2: mocked Selector (deterministic fail-closed path) ----------
+
+    @isTest
+    static void provisionPartner_profileNotResolved_mapsToProvisioningFailed() {
+        // hfs_Application.UnitOfWork has no working mock seam in this fflib version
+        // (only Selector/Service are wrapped with a public setMock). Mocking the
+        // profile lookup instead forces the same explicit, deterministic fail-closed
+        // branch (profileId == null) that guards the real DML, without depending on
+        // this org's Community Plus profile/license actually being provisioned.
+        fflib_ApexMocks mocks = new fflib_ApexMocks();
+        hfs_UsersSelector mockUsersSel = (hfs_UsersSelector) mocks.mock(hfs_UsersSelector.class);
+        mocks.startStubbing();
+        mocks.when(mockUsersSel.getProfileIdByName((String) fflib_Match.anyObject())).thenReturn(null);
+        mocks.stopStubbing();
+        hfs_Application.Selector.setMock(User.SObjectType, mockUsersSel);
+
+        hfs_RegistrationService svc = new hfs_RegistrationServiceImpl();
+        hfs_RegistrationWrapper dto = hfs_TestDataFactory.buildRegistrationWrapper(
+            'Mock NoProfile Co', 'Mock NoProfile Dealer', '(303) 555-0199',
+            'mocknoprofile@dealer.test', 'Dealer', 'Colorado', 'Forced failure test.'
+        );
+
+        Boolean threw = false;
+        Test.startTest();
+        try {
+            svc.provisionPartner(dto);
+        } catch (hfs_ApplicationException e) {
+            threw = true;
+            Assert.areEqual(
+                hfs_Constants.PROVISIONING_FAILED,
+                e.errorCode,
+                'An unresolved profile must always map to PROVISIONING_FAILED, regardless of org config'
+            );
+        }
+        Test.stopTest();
+        Assert.isTrue(threw, 'A profile lookup miss should always be surfaced as PROVISIONING_FAILED');
+    }
+
     @isTest
     static void selectorsAndDomain_coveredThroughService() {
         // Directly exercise the Selector and Domain helpers the service orchestrates
-        // (no standalone selector/domain test classes per team convention).
+        // (no standalone selector/domain test classes per team convention). Every
+        // selector below is resolved through hfs_Application.Selector, never `new`'d
+        // directly, so the same seam the Service uses is exercised here too.
         Account acct = new Account(Name = 'Sel Domain Co');
         insert acct;
         insert new Contact(LastName = 'Sel', Email = 'seldomain@dealer.test', AccountId = acct.Id);
 
         Test.startTest();
         // Contacts selector (SYSTEM_MODE, bind map).
-        List<Contact> found = new hfs_ContactsGenericSelector().getContactsRecords(
+        hfs_ContactsSelector contactsSel = (hfs_ContactsSelector) hfs_Application.Selector.newInstance(
+            Contact.SObjectType
+        );
+        List<Contact> found = contactsSel.getContactsRecords(
             'Email = :email',
             new Map<String, Object>{ 'email' => 'seldomain@dealer.test' },
             new List<String>{ 'Id', 'Email' }
@@ -237,7 +286,7 @@ private class hfs_RegistrationServiceTest {
         Assert.areEqual(1, found.size(), 'Contacts selector should find the seeded Contact');
 
         // Users selector + profile resolution.
-        hfs_UsersSelector usersSel = new hfs_UsersSelector();
+        hfs_UsersSelector usersSel = (hfs_UsersSelector) hfs_Application.Selector.newInstance(User.SObjectType);
         Id profileId = usersSel.getProfileIdByName('System Administrator');
         Assert.isNotNull(profileId, 'Users selector should resolve a Profile Id');
 
@@ -254,7 +303,10 @@ private class hfs_RegistrationServiceTest {
         Assert.isNull(usersSel.getPortalAccountOwner('no.such.user@nowhere.invalid'), 'Unknown username resolves to null');
 
         // Permission sets selector.
-        Id permSetId = new hfs_PermissionSetsSelector().getPermissionSetIdByName('hfs_Dry_Run_Partner');
+        hfs_PermissionSetsSelector permSetsSel = (hfs_PermissionSetsSelector) hfs_Application.Selector.newInstance(
+            PermissionSet.SObjectType
+        );
+        Id permSetId = permSetsSel.getPermissionSetIdByName('hfs_Dry_Run_Partner');
         Assert.isNotNull(permSetId, 'Permission set selector should resolve the partner permission set');
 
         // Contacts Domain (fflib) — the full name is staged on LastName;

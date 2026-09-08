@@ -2,10 +2,17 @@
  * @description Controller-tier tests. Per team convention the controller test
  * covers input validation and the final hfs_Response shape (success and
  * every error branch), including the response wrapper's own success/error/
- * unexpected paths — there is no separate wrapper test class.
+ * unexpected paths — there is no separate wrapper test class. Two-tier
+ * structure like hfs_ToolboxControllerTest / hfs_TrainingControllerTest:
+ * Tier 1 exercises register() end-to-end against the real
+ * hfs_RegistrationServiceImpl; Tier 2 stubs hfs_RegistrationService via
+ * ApexMocks + hfs_Application.Service.setMock to deterministically prove the
+ * hfs_Response translation contract in isolation from provisioning.
  */
 @isTest
 private class hfs_RegistrationControllerTest {
+    // ---------- Tier 1: real end-to-end ----------
+
     @isTest
     static void register_uniqueInput_returnsWellFormedResponse() {
         User owner = hfs_TestDataFactory.createRoleBearingOwner();
@@ -66,6 +73,96 @@ private class hfs_RegistrationControllerTest {
         Test.stopTest();
 
         Assert.isFalse(response.isSuccess, 'Blank name should fail at the guard boundary');
+    }
+
+    // ---------- Tier 2: mocked Service (isolate the Controller) ----------
+
+    @isTest
+    static void register_mockedService_returnsProvisionedPayload() {
+        fflib_ApexMocks mocks = new fflib_ApexMocks();
+        hfs_RegistrationService mockService = (hfs_RegistrationService) mocks.mock(
+            hfs_RegistrationServiceImpl.class
+        );
+        mocks.startStubbing();
+        mocks.when(mockService.registerPartner((hfs_RegistrationWrapper) fflib_Match.anyObject()))
+            .thenReturn((Id) null);
+        mocks.stopStubbing();
+        hfs_Application.Service.setMock(hfs_RegistrationService.class, mockService);
+
+        hfs_RegistrationWrapper dto = hfs_TestDataFactory.buildRegistrationWrapper('Mock Dealer', 'mock@dealer.test');
+
+        Test.startTest();
+        hfs_Response response = hfs_RegistrationController.register(dto);
+        Test.stopTest();
+
+        Assert.isTrue(response.isSuccess, 'Mocked success expected');
+        hfs_RegistrationWrapper payload = (hfs_RegistrationWrapper) response.payload;
+        Assert.isTrue(payload.provisioned, 'Controller should set provisioned=true on success');
+        Assert.areEqual('mock@dealer.test', payload.email, 'Payload should echo the submitted DTO');
+    }
+
+    @isTest
+    static void register_businessException_surfacesOwnCodeAndMessage() {
+        fflib_ApexMocks mocks = new fflib_ApexMocks();
+        hfs_RegistrationService mockService = (hfs_RegistrationService) mocks.mock(
+            hfs_RegistrationServiceImpl.class
+        );
+        mocks.startStubbing();
+        mocks.when(mockService.registerPartner((hfs_RegistrationWrapper) fflib_Match.anyObject()))
+            .thenThrow(
+                hfs_ApplicationException.build(System.Label.hfs_Error_Duplicate_Email, hfs_Constants.DUPLICATE_EMAIL)
+            );
+        mocks.stopStubbing();
+        hfs_Application.Service.setMock(hfs_RegistrationService.class, mockService);
+
+        hfs_RegistrationWrapper dto = hfs_TestDataFactory.buildRegistrationWrapper('Mock Dupe', 'mockdupe@dealer.test');
+
+        Test.startTest();
+        hfs_Response response = hfs_RegistrationController.register(dto);
+        Test.stopTest();
+
+        Assert.isFalse(response.isSuccess, 'Business exception should fail the response');
+        Assert.areEqual(
+            hfs_Constants.DUPLICATE_EMAIL,
+            response.errorCode,
+            'Business exception code should surface unchanged'
+        );
+        Assert.areEqual(
+            System.Label.hfs_Error_Duplicate_Email,
+            response.errorMessage,
+            'Business exception message should surface unchanged'
+        );
+    }
+
+    @isTest
+    static void register_unexpectedException_mapsToFallback() {
+        fflib_ApexMocks mocks = new fflib_ApexMocks();
+        hfs_RegistrationService mockService = (hfs_RegistrationService) mocks.mock(
+            hfs_RegistrationServiceImpl.class
+        );
+        mocks.startStubbing();
+        mocks.when(mockService.registerPartner((hfs_RegistrationWrapper) fflib_Match.anyObject()))
+            .thenThrow(new System.NullPointerException());
+        mocks.stopStubbing();
+        hfs_Application.Service.setMock(hfs_RegistrationService.class, mockService);
+
+        hfs_RegistrationWrapper dto = hfs_TestDataFactory.buildRegistrationWrapper('Mock Fail', 'mockfail@dealer.test');
+
+        Test.startTest();
+        hfs_Response response = hfs_RegistrationController.register(dto);
+        Test.stopTest();
+
+        Assert.isFalse(response.isSuccess, 'Unexpected exception should fail the response');
+        Assert.areEqual(
+            hfs_Constants.UNEXPECTED_ERROR,
+            response.errorCode,
+            'Unexpected exception should map to the domain-neutral fallback code'
+        );
+        Assert.areEqual(
+            System.Label.hfs_Msg_Generic_Error,
+            response.errorMessage,
+            'Unexpected exception should map to the safe fallback message'
+        );
     }
 
     @isTest

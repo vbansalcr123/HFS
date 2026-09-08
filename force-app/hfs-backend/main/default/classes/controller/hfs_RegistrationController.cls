@@ -18,7 +18,9 @@ public with sharing class hfs_RegistrationController {
     public static hfs_Response register(hfs_RegistrationWrapper dto) {
         try {
             hfs_Guard.notNull(dto, 'dto');
-            hfs_RegistrationService service = new hfs_RegistrationServiceImpl();
+            hfs_RegistrationService service = (hfs_RegistrationService) hfs_Application.Service.newInstance(
+                hfs_RegistrationService.class
+            );
             service.registerPartner(dto);
             dto.provisioned = true;
             dto.password = null; // never echo the password back to the client

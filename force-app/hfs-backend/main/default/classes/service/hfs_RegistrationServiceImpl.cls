@@ -8,9 +8,15 @@
  * the user can log in immediately — no set-password email is sent.
  */
 public without sharing class hfs_RegistrationServiceImpl implements hfs_RegistrationService {
-    private final hfs_ContactsGenericSelector contactsSelector = new hfs_ContactsGenericSelector();
-    private final hfs_UsersSelector usersSelector = new hfs_UsersSelector();
-    private final hfs_PermissionSetsSelector permSetsSelector = new hfs_PermissionSetsSelector();
+    // Resolved through hfs_Application.Selector (never `new`'d directly) so tests
+    // can substitute a mock via hfs_Application.Selector.setMock(...), matching
+    // the pattern the rest of the codebase (e.g. hfs_ToolboxServiceImpl) follows.
+    private final hfs_ContactsSelector contactsSelector =
+        (hfs_ContactsSelector) hfs_Application.Selector.newInstance(Contact.SObjectType);
+    private final hfs_UsersSelector usersSelector =
+        (hfs_UsersSelector) hfs_Application.Selector.newInstance(User.SObjectType);
+    private final hfs_PermissionSetsSelector permSetsSelector =
+        (hfs_PermissionSetsSelector) hfs_Application.Selector.newInstance(PermissionSet.SObjectType);
 
     /**
      * @description Test seam: when set, this config is used instead of the
@@ -25,8 +31,9 @@ public without sharing class hfs_RegistrationServiceImpl implements hfs_Registra
      * @description Rejects duplicates then provisions the partner in one
      * transaction from the supplied DTO.
      * @param dto the registration payload
+     * @return the created portal User Id
      */
-    public void registerPartner(hfs_RegistrationWrapper dto) {
+    public Id registerPartner(hfs_RegistrationWrapper dto) {
         hfs_Guard.notNull(dto, 'dto');
         hfs_Guard.notBlank(dto.name, 'name');
         hfs_Guard.notBlank(dto.email, 'email');
@@ -38,16 +45,17 @@ public without sharing class hfs_RegistrationServiceImpl implements hfs_Registra
             );
         }
 
-        provisionPartner(dto);
+        return provisionPartner(dto);
     }
 
     /**
-     * @description Provisions Account -> Contact -> active User + permission set
-     * in one transaction from the supplied DTO, then sets the User's password to
-     * the value captured on the signup page. Any exception rolls the whole
-     * transaction back — no partial Contact / User and no orphan permission-set
-     * assignment. Because the password is set at creation, Salesforce does not
-     * send a set-password email; the user logs in with the password they chose.
+     * @description Provisions Account -> Contact -> active User in one
+     * transaction from the supplied DTO: any exception during that commit rolls
+     * the whole transaction back (no partial Contact / User). Once that commit
+     * succeeds, the identity exists; setting the User's password and enqueueing
+     * the permission-set assignment happen afterward and are best-effort — a
+     * failure there is logged but does not roll back or fail the call, since the
+     * account was already genuinely created (see the second try/catch below).
      * @param dto the registration payload (company, name, phone, email,
      *   partnerType, territory, message, password)
      * @return the created portal User Id
@@ -105,13 +113,17 @@ public without sharing class hfs_RegistrationServiceImpl implements hfs_Registra
         }
         Id portalAccountOwnerId = portalOwner.Id;
 
-        // Provision Account -> Contact -> active User -> permission-set
-        // assignment through one Unit of Work. registerNew wires the child
-        // relationships and commitWork() persists everything atomically — any
-        // exception rolls the whole transaction back (no partial identity, no
-        // orphan assignment). The password chosen on the signup page is applied
-        // after commit via System.setPassword (no set-password email is sent).
+        // Provision Account -> Contact -> active User through one Unit of Work.
+        // registerNew wires the child relationships and commitWork() persists
+        // them atomically — any exception here rolls the whole transaction back
+        // (no partial identity). Password-setting and permission-set assignment
+        // happen AFTER this commit and are handled in their own try/catch below:
+        // once this commit succeeds the identity genuinely exists, and a failure
+        // in those later steps must never be reported back as PROVISIONING_FAILED
+        // (the visitor would see "failed" while an account was actually created,
+        // and any retry would then be rejected as a duplicate, locking them out).
         fflib_ISObjectUnitOfWork uow = hfs_Application.UnitOfWork.newInstance();
+        User portalUser;
         try {
             // 1) New Account per registration. Company name from the form (falls
             //    back to a derived name); partner type on the standard Account.Type.
@@ -146,7 +158,7 @@ public without sharing class hfs_RegistrationServiceImpl implements hfs_Registra
             //    password policy up front (throws if it fails) so a weak password
             //    surfaces before any DML. The password itself is applied after
             //    commit via System.setPassword.
-            User portalUser = buildPortalUser(con, dto.email, profileId);
+            portalUser = buildPortalUser(con, dto.email, profileId);
             // Site.validatePassword / System.setPassword operate on real portal
             // credentials and the site context, which are unavailable in Apex
             // tests — guard so the provisioning path stays testable.
@@ -163,7 +175,21 @@ public without sharing class hfs_RegistrationServiceImpl implements hfs_Registra
             // MIXED_DML_OPERATION. It is deferred to a Queueable below so it runs
             // in its own transaction after the User exists.
             uow.commitWork();
+        } catch (Exception e) {
+            System.debug(LoggingLevel.ERROR, 'hfs provisioning failed: ' + e.getMessage() + '\n' + e.getStackTraceString());
+            throw hfs_ApplicationException.build(
+                System.Label.hfs_Error_Provisioning_Failed,
+                hfs_Constants.PROVISIONING_FAILED
+            );
+        }
 
+        // The Account/Contact/active User are committed at this point — the
+        // identity genuinely exists. Password-setting and permission-set
+        // enqueueing are best-effort from here: a failure is logged but never
+        // rethrown as PROVISIONING_FAILED, since that would tell the visitor
+        // nothing was created when an account actually was, and any retry would
+        // then be rejected by the duplicate check above, locking them out for good.
+        try {
             // Set the password the visitor chose on the signup page. Done after
             // commit because the User must exist first; setting the password here
             // (rather than leaving it blank) means Salesforce does NOT send a
@@ -181,14 +207,14 @@ public without sharing class hfs_RegistrationServiceImpl implements hfs_Registra
                     new hfs_AssignPartnerPermSetQueueable(portalUser.Id, permSetId)
                 );
             }
-            return portalUser.Id;
         } catch (Exception e) {
-            System.debug(LoggingLevel.ERROR, 'hfs provisioning failed: ' + e.getMessage() + '\n' + e.getStackTraceString());
-            throw hfs_ApplicationException.build(
-                System.Label.hfs_Error_Provisioning_Failed,
-                hfs_Constants.PROVISIONING_FAILED
+            System.debug(
+                LoggingLevel.ERROR,
+                'hfs post-provisioning step (setPassword/enqueueJob) failed for already-created user '
+                    + portalUser.Id + ': ' + e.getMessage() + '\n' + e.getStackTraceString()
             );
         }
+        return portalUser.Id;
     }
 
     /**

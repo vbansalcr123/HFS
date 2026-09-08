@@ -10,8 +10,9 @@ public interface hfs_RegistrationService {
      * @description Rejects duplicates then provisions the identity chain from the
      * supplied DTO in one transaction. Fails closed on any error.
      * @param dto the registration payload (name, email/username)
+     * @return the created portal User Id
      */
-    void registerPartner(hfs_RegistrationWrapper dto);
+    Id registerPartner(hfs_RegistrationWrapper dto);
 
     /**
      * @description Provisions the identity chain from the supplied DTO and sets

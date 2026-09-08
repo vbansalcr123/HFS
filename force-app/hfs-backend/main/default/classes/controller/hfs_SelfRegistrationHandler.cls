@@ -2,7 +2,10 @@
  * @description Custom self-registration handler implementing the current
  * Auth.ConfigurableSelfRegHandler lifecycle for Experience Cloud. Delegates to
  * the registration service so native self-registration is extended, not
- * replaced. Never trusts a client-supplied profile Id — the CCP profile is
+ * replaced. Calls registerPartner (not provisionPartner) so this entry point
+ * enforces the same duplicate-email check as the Controller — provisionPartner
+ * alone would skip it and let native self-registration create duplicate
+ * accounts. Never trusts a client-supplied profile Id — the CCP profile is
  * resolved from configuration inside the service. The password the visitor
  * enters on the signup page is passed through to the service, which sets it on
  * the new User so they can log in immediately (no set-password email). Declared
@@ -40,7 +43,9 @@ public without sharing class hfs_SelfRegistrationHandler implements Auth.Configu
         dto.name = fullName.trim();
         dto.email = email;
         dto.password = password;
-        hfs_RegistrationService service = new hfs_RegistrationServiceImpl();
-        return service.provisionPartner(dto);
+        hfs_RegistrationService service = (hfs_RegistrationService) hfs_Application.Service.newInstance(
+            hfs_RegistrationService.class
+        );
+        return service.registerPartner(dto);
     }
 }
