@@ -27,7 +27,7 @@ public inherited sharing class hfs_PermissionSetsSelector extends fflib_SObjectS
      * @param apiName the permission set Name (API name)
      * @return the PermissionSet Id, or null when not found
      */
-    public Id selectIdByName(String apiName) {
+    public Id getPermissionSetIdByName(String apiName) {
         List<PermissionSet> sets = [
             SELECT Id FROM PermissionSet WHERE Name = :apiName WITH SYSTEM_MODE LIMIT 1
         ];

@@ -57,6 +57,30 @@
                     message-when-value-missing={labelRequired}>
                 </lightning-input>
 
+                <lightning-input
+                    class="auth-input"
+                    type="password"
+                    data-field="password"
+                    label={labelPassword}
+                    value={password}
+                    required
+                    autocomplete="new-password"
+                    onchange={handlePasswordChange}
+                    message-when-value-missing={labelRequired}>
+                </lightning-input>
+
+                <lightning-input
+                    class="auth-input"
+                    type="password"
+                    data-field="confirmPassword"
+                    label={labelConfirmPassword}
+                    value={confirmPassword}
+                    required
+                    autocomplete="new-password"
+                    onchange={handleConfirmPasswordChange}
+                    message-when-value-missing={labelRequired}>
+                </lightning-input>
+
                 <lightning-combobox
                     class="auth-input"
                     data-field="partnerType"

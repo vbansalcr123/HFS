@@ -5,15 +5,15 @@
  * Selector and Domain helpers it orchestrates (there are no standalone
  * selector / domain test classes). Tier 1 (below) runs real DML, so whether
  * provisioning actually succeeds depends on org config (profile/permission-set/
- * portal-owner existing) that this test can't control; Tier 2 mocks
- * hfs_Application.UnitOfWork, like hfs_ToolboxServiceImplTest mocks its
- * Selectors, to make both the failure and success control-flow deterministic.
+ * portal-owner existing) that this test can't control; Tier 2 mocks a Selector
+ * via hfs_Application.Selector.setMock, like hfs_ToolboxServiceImplTest mocks
+ * its Selectors, to make the fail-closed control-flow deterministic.
  */
-@IsTest
+@isTest
 private class hfs_RegistrationServiceTest {
     // ---------- Tier 1: real end-to-end, no mocks ----------
 
-    @IsTest
+    @isTest
     static void registerPartner_duplicateContact_throwsDuplicate() {
         Account acct = new Account(Name = 'Existing Partner');
         insert acct;
@@ -34,7 +34,7 @@ private class hfs_RegistrationServiceTest {
         Assert.isTrue(threw, 'Duplicate contact should be rejected');
     }
 
-    @IsTest
+    @isTest
     static void registerPartner_blankName_tripsGuard() {
         hfs_RegistrationService svc = new hfs_RegistrationServiceImpl();
         hfs_RegistrationWrapper w = hfs_TestDataFactory.buildRegistrationWrapper('', 'blank@dealer.test');
@@ -51,8 +51,10 @@ private class hfs_RegistrationServiceTest {
         Assert.isTrue(threw, 'Blank name should throw a guard exception');
     }
 
-    @IsTest
+    @isTest
     static void registerPartner_uniqueInput_provisionsOrFailsClosed() {
+        User owner = hfs_TestDataFactory.createRoleBearingOwner();
+        hfs_RegistrationServiceImpl.configOverride = hfs_TestDataFactory.buildConfigForOwner(owner.Username);
         User current = new User(Id = UserInfo.getUserId());
         System.runAs(current) {
             hfs_RegistrationService svc = new hfs_RegistrationServiceImpl();
@@ -80,8 +82,10 @@ private class hfs_RegistrationServiceTest {
         }
     }
 
-    @IsTest
-    static void provisionPartner_createsInactiveUserOrFailsClosed() {
+    @isTest
+    static void provisionPartner_createsActiveUserWithPasswordOrFailsClosed() {
+        User owner = hfs_TestDataFactory.createRoleBearingOwner();
+        hfs_RegistrationServiceImpl.configOverride = hfs_TestDataFactory.buildConfigForOwner(owner.Username);
         User current = new User(Id = UserInfo.getUserId());
         System.runAs(current) {
             hfs_RegistrationService svc = new hfs_RegistrationServiceImpl();
@@ -110,7 +114,7 @@ private class hfs_RegistrationServiceTest {
             if (provisioned) {
                 Assert.areEqual(1, contactsAfter - contactsBefore, 'A Contact should exist for the provisioned partner');
                 User created = [SELECT IsActive FROM User WHERE Id = :userId];
-                Assert.isFalse(created.IsActive, 'The portal User must be created inactive until the emailed link is clicked');
+                Assert.isTrue(created.IsActive, 'The portal User is created active with the signup-page password set, so the user can log in immediately (no set-password email)');
                 // The request-access form fields persist to standard fields.
                 Contact con = [
                     SELECT Phone, MailingState, Description, Account.Name, Account.Type
@@ -127,7 +131,53 @@ private class hfs_RegistrationServiceTest {
         }
     }
 
-    @IsTest
+    @isTest
+    static void provisionPartner_blankPassword_generatesOne() {
+        // When the signup page did not supply a password, the service generates a
+        // strong random one so user creation still succeeds (covers the
+        // generateRandomPassword path).
+        User owner = hfs_TestDataFactory.createRoleBearingOwner();
+        hfs_RegistrationServiceImpl.configOverride = hfs_TestDataFactory.buildConfigForOwner(owner.Username);
+        User current = new User(Id = UserInfo.getUserId());
+        System.runAs(current) {
+            hfs_RegistrationService svc = new hfs_RegistrationServiceImpl();
+            hfs_RegistrationWrapper dto = hfs_TestDataFactory.buildRegistrationWrapper(
+                'NoPwd Fuel Co', 'NoPwd Dealer', '(303) 555-0111',
+                'nopwd@dealer.test', 'Dealer', 'Colorado', 'No password supplied.'
+            );
+            dto.password = null; // force the random-password branch
+
+            Test.startTest();
+            Boolean provisioned = false;
+            try {
+                Id userId = svc.provisionPartner(dto);
+                provisioned = (userId != null);
+            } catch (hfs_ApplicationException e) {
+                Assert.areEqual(
+                    hfs_Constants.PROVISIONING_FAILED,
+                    e.errorCode,
+                    'On failure the code must be PROVISIONING_FAILED (fail closed)'
+                );
+            }
+            Test.stopTest();
+
+            if (provisioned) {
+                Integer users = [SELECT COUNT() FROM User WHERE Email = 'nopwd@dealer.test'];
+                Assert.areEqual(1, users, 'A portal User is created even when no password was supplied');
+            }
+        }
+
+        // Directly cover the random-password generator: it must be long and
+        // contain each required character class so it satisfies org password policy.
+        String generated = new hfs_RegistrationServiceImpl().generateRandomPassword();
+        Assert.isTrue(generated.length() >= 20, 'Generated password should be at least 20 chars');
+        Assert.isTrue(generated.containsAny('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'Has an uppercase char');
+        Assert.isTrue(generated.containsAny('abcdefghijklmnopqrstuvwxyz'), 'Has a lowercase char');
+        Assert.isTrue(generated.containsAny('0123456789'), 'Has a numeric char');
+        Assert.isTrue(generated.containsAny('!#$%-_=+'), 'Has a special char');
+    }
+
+    @isTest
     static void provisionPartner_blankEmail_tripsGuard() {
         // A blank email trips the guard before any DML — proves no records are
         // created on invalid input.
@@ -143,10 +193,10 @@ private class hfs_RegistrationServiceTest {
         Assert.isTrue(threw, 'Blank email should trip the guard before provisioning');
     }
 
-    @IsTest
-    static void assignPartnerPermissionSet_assignsPermSet() {
-        // Cover the post-insert permission-set assignment directly with a real
-        // test user so the assignment line executes (no mixed DML).
+    @isTest
+    static void assignPartnerPermSetQueueable_assignsPermSet() {
+        // Cover the deferred permission-set assignment (Queueable) directly with a
+        // real test user so the assignment executes in its own transaction.
         Id sysAdminProfileId = [SELECT Id FROM Profile WHERE Name = 'System Administrator' LIMIT 1].Id;
         String uniq = 'crhfsfin' + String.valueOf(Datetime.now().getTime());
         User u = new User(
@@ -166,8 +216,7 @@ private class hfs_RegistrationServiceTest {
         Id permSetId = [SELECT Id FROM PermissionSet WHERE Name = 'hfs_Dry_Run_Partner' LIMIT 1].Id;
 
         Test.startTest();
-        hfs_RegistrationServiceImpl impl = new hfs_RegistrationServiceImpl();
-        impl.assignPartnerPermissionSet(u.Id, permSetId);
+        System.enqueueJob(new hfs_AssignPartnerPermSetQueueable(u.Id, permSetId));
         Test.stopTest();
 
         List<PermissionSetAssignment> assignments = [
@@ -178,19 +227,17 @@ private class hfs_RegistrationServiceTest {
 
     // ---------- Tier 2: mocked Selector (deterministic fail-closed path) ----------
 
-    @IsTest
+    @isTest
     static void provisionPartner_profileNotResolved_mapsToProvisioningFailed() {
         // hfs_Application.UnitOfWork has no working mock seam in this fflib version
-        // (only Selector/Service are wrapped with a public setMock) — confirmed by an
-        // earlier attempt to mock commitWork() to throw, which silently fell through to
-        // the real UnitOfWork instead. Mocking the profile lookup instead forces the
-        // same explicit, deterministic fail-closed branch (profileId == null) that
-        // guards the real DML, without depending on this org's Community Plus
-        // profile/license actually being provisioned.
+        // (only Selector/Service are wrapped with a public setMock). Mocking the
+        // profile lookup instead forces the same explicit, deterministic fail-closed
+        // branch (profileId == null) that guards the real DML, without depending on
+        // this org's Community Plus profile/license actually being provisioned.
         fflib_ApexMocks mocks = new fflib_ApexMocks();
         hfs_UsersSelector mockUsersSel = (hfs_UsersSelector) mocks.mock(hfs_UsersSelector.class);
         mocks.startStubbing();
-        mocks.when(mockUsersSel.selectProfileIdByName((String) fflib_Match.anyObject())).thenReturn(null);
+        mocks.when(mockUsersSel.getProfileIdByName((String) fflib_Match.anyObject())).thenReturn(null);
         mocks.stopStubbing();
         hfs_Application.Selector.setMock(User.SObjectType, mockUsersSel);
 
@@ -216,7 +263,7 @@ private class hfs_RegistrationServiceTest {
         Assert.isTrue(threw, 'A profile lookup miss should always be surfaced as PROVISIONING_FAILED');
     }
 
-    @IsTest
+    @isTest
     static void selectorsAndDomain_coveredThroughService() {
         // Directly exercise the Selector and Domain helpers the service orchestrates
         // (no standalone selector/domain test classes per team convention). Every
@@ -227,50 +274,59 @@ private class hfs_RegistrationServiceTest {
         insert new Contact(LastName = 'Sel', Email = 'seldomain@dealer.test', AccountId = acct.Id);
 
         Test.startTest();
+        // Contacts selector (SYSTEM_MODE, bind map).
+        hfs_ContactsSelector contactsSel = (hfs_ContactsSelector) hfs_Application.Selector.newInstance(
+            Contact.SObjectType
+        );
+        List<Contact> found = contactsSel.getContactsRecords(
+            'Email = :email',
+            new Map<String, Object>{ 'email' => 'seldomain@dealer.test' },
+            new List<String>{ 'Id', 'Email' }
+        );
+        Assert.areEqual(1, found.size(), 'Contacts selector should find the seeded Contact');
+
         // Users selector + profile resolution.
         hfs_UsersSelector usersSel = (hfs_UsersSelector) hfs_Application.Selector.newInstance(User.SObjectType);
-        Id profileId = usersSel.selectProfileIdByName('System Administrator');
+        Assert.areEqual(User.SObjectType, usersSel.getSObjectType(), 'Users selector targets User');
+        Assert.areEqual(
+            new List<Schema.SObjectField>{ User.Id, User.Username, User.Email },
+            usersSel.getSObjectFieldList(),
+            'Users selector field list should be Id, Username, Email'
+        );
+        Id profileId = usersSel.getProfileIdByName('System Administrator');
         Assert.isNotNull(profileId, 'Users selector should resolve a Profile Id');
 
-        // Duplicate detection by username / email (SYSTEM_MODE, bind map).
-        List<User> byUsernameOrEmail = usersSel.selectByUsernameOrEmail(
-            'no.such.username@nowhere.invalid',
-            'seldomain@dealer.test'
-        );
-        Assert.isTrue(byUsernameOrEmail.isEmpty(), 'No User exists yet for this email/username pair');
-
         // Portal account owner resolution by username (role-bearing owner lookup).
-        User me = [SELECT Username FROM User WHERE Id = :UserInfo.getUserId() LIMIT 1];
+        User me = [SELECT Username, UserRoleId FROM User WHERE Id = :UserInfo.getUserId() LIMIT 1];
+        User resolvedOwner = usersSel.getPortalAccountOwner(me.Username);
+        Assert.isNotNull(resolvedOwner, 'Owner lookup resolves an active User by username');
         Assert.areEqual(
             UserInfo.getUserId(),
-            usersSel.selectActiveIdByUsername(me.Username),
-            'Owner lookup resolves an active User by username'
+            resolvedOwner.Id,
+            'Owner lookup returns the matching User'
         );
-        Assert.isNull(usersSel.selectActiveIdByUsername(null), 'Blank username resolves to null');
-        Assert.isNull(
-            usersSel.selectActiveIdByUsername('no.such.user@nowhere.invalid'),
-            'Unknown username resolves to null'
-        );
+        Assert.isNull(usersSel.getPortalAccountOwner(null), 'Blank username resolves to null');
+        Assert.isNull(usersSel.getPortalAccountOwner('no.such.user@nowhere.invalid'), 'Unknown username resolves to null');
 
         // Permission sets selector.
         hfs_PermissionSetsSelector permSetsSel = (hfs_PermissionSetsSelector) hfs_Application.Selector.newInstance(
             PermissionSet.SObjectType
         );
-        Id permSetId = permSetsSel.selectIdByName('hfs_Dry_Run_Partner');
-        Assert.isNotNull(permSetId, 'Permission set selector should resolve the partner permission set');
-        Assert.isNull(
-            permSetsSel.selectIdByName('no.such.permission.set'),
-            'Unknown permission set name resolves to null'
-        );
         Assert.areEqual(
             PermissionSet.SObjectType,
-            permSetsSel.sObjectType(),
-            'sObjectType should be the PermissionSet object'
+            permSetsSel.getSObjectType(),
+            'Permission sets selector targets PermissionSet'
         );
         Assert.areEqual(
             new List<Schema.SObjectField>{ PermissionSet.Id, PermissionSet.Name },
             permSetsSel.getSObjectFieldList(),
-            'Field list should be Id and Name'
+            'Permission sets selector field list should be Id, Name'
+        );
+        Id permSetId = permSetsSel.getPermissionSetIdByName('hfs_Dry_Run_Partner');
+        Assert.isNotNull(permSetId, 'Permission set selector should resolve the partner permission set');
+        Assert.isNull(
+            permSetsSel.getPermissionSetIdByName('no.such.permission.set'),
+            'Unknown permission set name resolves to null'
         );
 
         // Contacts Domain (fflib) — the full name is staged on LastName;

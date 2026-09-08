@@ -154,7 +154,8 @@ public class hfs_TestDataFactory {
 
   /**
    * @description Builds a registration wrapper for the register phase (name + email only;
-   * other fields left null).
+   * other fields left null). Sets a policy-compliant default password so callers that
+   * exercise the active-User / chosen-password provisioning path don't need to set one.
    * @param name registrant name
    * @param email registrant email
    * @return the wrapper
@@ -166,12 +167,15 @@ public class hfs_TestDataFactory {
     hfs_RegistrationWrapper w = new hfs_RegistrationWrapper();
     w.name = name;
     w.email = email;
+    w.password = 'Test1234!@#$';
     return w;
   }
 
   /**
    * @description Builds a fully populated registration wrapper mirroring the request-access
-   * form (company, name, phone, email, partner type, territory, message).
+   * form (company, name, phone, email, partner type, territory, message). Sets a
+   * policy-compliant default password so callers that exercise the active-User /
+   * chosen-password provisioning path don't need to set one.
    * @param company company / business name
    * @param name registrant name
    * @param phone phone number
@@ -198,7 +202,65 @@ public class hfs_TestDataFactory {
     w.partnerType = partnerType;
     w.territory = territory;
     w.message = message;
+    w.password = 'Test1234!@#$';
     return w;
+  }
+
+  /**
+   * @description Creates an active internal owner User that HAS a UserRole, so
+   * provisioning tests can exercise the portal-account happy path (Salesforce
+   * requires the owner of a portal account to hold a role). Uses the running
+   * user's profile to avoid a hard-coded profile dependency.
+   * @return the inserted role-bearing owner User
+   */
+  public static User createRoleBearingOwner() {
+    UserRole role = new UserRole(Name = 'hfs Test Owner Role ' + generateSuffix());
+    insert role;
+
+    User owner = new User(
+      FirstName = 'HFS',
+      LastName = 'Portal Owner',
+      Alias = 'hfsown',
+      Email = 'hfs.owner@example.com',
+      Username = 'hfs.owner.' + generateSuffix() + '@example.com.hfs',
+      CommunityNickname = 'hfsown' + generateSuffix(),
+      ProfileId = UserInfo.getProfileId(),
+      UserRoleId = role.Id,
+      TimeZoneSidKey = 'America/Los_Angeles',
+      LocaleSidKey = 'en_US',
+      EmailEncodingKey = 'UTF-8',
+      LanguageLocaleKey = 'en_US',
+      IsActive = true
+    );
+    insert owner;
+    return owner;
+  }
+
+  /**
+   * @description Builds a config override pointing provisioning at the given
+   * role-bearing owner, mirroring the deployed Default record's profile /
+   * permission-set names.
+   * @param ownerUsername username of the role-bearing owner
+   * @return an in-memory config record for the test seam
+   */
+  public static hfs_Registration_Config__mdt buildConfigForOwner(String ownerUsername) {
+    return new hfs_Registration_Config__mdt(
+      Community_Plus_Profile_Name__c = 'Customer Community Plus User',
+      Partner_Permission_Set_Name__c = 'hfs_Dry_Run_Partner',
+      Portal_Account_Owner_Username__c = ownerUsername
+    );
+  }
+
+  private static Integer counter = 0;
+
+  /**
+   * @description Returns a unique numeric suffix for building collision-free
+   * usernames / labels within a single test run.
+   * @return a unique string suffix
+   */
+  private static String generateSuffix() {
+    counter++;
+    return String.valueOf(Datetime.now().getTime()) + counter;
   }
 
   /**

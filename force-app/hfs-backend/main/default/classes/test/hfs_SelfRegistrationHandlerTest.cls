@@ -1,11 +1,15 @@
 /**
  * @description Tests for the self-registration handler — verifies it delegates
- * to the service and fails closed without leaving partial records.
+ * to the service via registerPartner (so duplicate email is rejected the same
+ * way the Controller rejects it) and fails closed without leaving partial
+ * records.
  */
-@IsTest
+@isTest
 private class hfs_SelfRegistrationHandlerTest {
-    @IsTest
+    @isTest
     static void createUser_delegatesToService() {
+        User owner = hfs_TestDataFactory.createRoleBearingOwner();
+        hfs_RegistrationServiceImpl.configOverride = hfs_TestDataFactory.buildConfigForOwner(owner.Username);
         User current = new User(Id = UserInfo.getUserId());
         System.runAs(current) {
             hfs_SelfRegistrationHandler handler = new hfs_SelfRegistrationHandler();
@@ -38,7 +42,7 @@ private class hfs_SelfRegistrationHandlerTest {
         }
     }
 
-    @IsTest
+    @isTest
     static void createUser_duplicateEmail_rejectsWithoutProvisioning() {
         Account acct = new Account(Name = 'Existing Handler Partner');
         insert acct;
