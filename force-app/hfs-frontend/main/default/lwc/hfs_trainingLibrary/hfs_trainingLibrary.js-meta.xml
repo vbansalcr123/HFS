@@ -4,7 +4,7 @@
     <isExposed>true</isExposed>
     <masterLabel>HFS Training Library</masterLabel>
     <description
-  >Container for the Training Library page: renders the per-user progress summary, category filters, and responsive course grid on the LWR partner portal.</description>
+  >Smart container for the Training Library page; owns the read and the HFS-34 write actions.</description>
     <targets>
         <target>lightningCommunity__Page</target>
         <target>lightningCommunity__Default</target>

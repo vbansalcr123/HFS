@@ -1,8 +1,7 @@
 /**
  * @description Project-wide application factory built on the installed fflib-apex-common
- * framework. Every Unit of Work, Domain, Selector and Service resolves through this class
- * rather than being instantiated directly, so any layer can be substituted with a mock in
- * tests.
+ * framework. Every Selector, Service, Domain and the Unit of Work resolves through this class
+ * rather than being instantiated directly, so any layer can be substituted with a mock in tests.
  *
  * The fflib factory setMock(...) methods are protected @TestVisible, so this class exposes
  * thin @TestVisible subclasses that surface a public setMock for test code to call.
@@ -18,7 +17,9 @@ public class hfs_Application {
       Account.SObjectType,
       Contact.SObjectType,
       User.SObjectType,
-      PermissionSetAssignment.SObjectType
+      PermissionSetAssignment.SObjectType,
+      hfs_CourseProgress__c.SObjectType,
+      hfs_CourseAttempt__c.SObjectType
     }
   );
 
@@ -27,6 +28,7 @@ public class hfs_Application {
     new Map<SObjectType, Type>{
       hfs_Course__c.SObjectType => hfs_CoursesSelector.class,
       hfs_CourseProgress__c.SObjectType => hfs_CourseProgressSelector.class,
+      hfs_CourseAttempt__c.SObjectType => hfs_CourseAttemptSelector.class,
       hfs_Program_Enrolment__c.SObjectType => hfs_ProgramEnrolmentsSelector.class,
       hfs_Favorite__c.SObjectType => hfs_FavouritesSelector.class,
       hfs_Download__c.SObjectType => hfs_DownloadsSelector.class,
@@ -50,12 +52,14 @@ public class hfs_Application {
   );
 
   /**
-   * Domain factory - resolves a Domain implementation for an SObjectType. Built on the
-   * Selector factory above so domain constructors can be resolved via the same registry.
+   * @description Domain factory - resolves a Domain implementation for an SObjectType so callers
+   * never new a Domain constructor directly (HFS-34 write layer).
    */
   public static final fflib_Application.DomainFactory Domain = new fflib_Application.DomainFactory(
     hfs_Application.Selector,
-    new Map<Schema.SObjectType, Type>{
+    new Map<SObjectType, Type>{
+      hfs_CourseProgress__c.SObjectType => hfs_CourseProgressDomain.Constructor.class,
+      hfs_CourseAttempt__c.SObjectType => hfs_CourseAttemptDomain.Constructor.class,
       Contact.SObjectType => hfs_ContactsDomain.Constructor.class
     }
   );

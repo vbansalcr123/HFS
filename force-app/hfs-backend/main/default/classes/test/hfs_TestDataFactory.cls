@@ -43,6 +43,27 @@ public class hfs_TestDataFactory {
   }
 
   /**
+   * @description Builds active course records that carry a content URL, so the HFS-34 launch guard
+   * (active + content present) passes. Optionally inserts them.
+   * @param count number of courses to build
+   * @param doInsert whether to insert the records
+   * @return the built (and optionally inserted) launchable courses
+   */
+  public static List<hfs_Course__c> createLaunchableCourses(
+    Integer count,
+    Boolean doInsert
+  ) {
+    List<hfs_Course__c> courses = createCourses(count, false);
+    for (Integer i = 0; i < courses.size(); i++) {
+      courses[i].hfs_ContentUrl__c = 'https://example.com/course/' + i;
+    }
+    if (doInsert) {
+      insert courses;
+    }
+    return courses;
+  }
+
+  /**
    * @description Builds a progress record for a course and user.
    * @param courseId the course the progress belongs to
    * @param userId the owning user
@@ -70,6 +91,31 @@ public class hfs_TestDataFactory {
         : null,
       hfs_CertificateUrl__c = (status == 'Completed')
         ? 'https://example.com/cert'
+        : null
+    );
+  }
+
+  /**
+   * @description Builds an attempt record for a progress record (HFS-34).
+   * @param progressId the parent progress record Id
+   * @param attemptNumber the sequential attempt number
+   * @param status the attempt status
+   * @return the built attempt record
+   */
+  public static hfs_CourseAttempt__c createAttempt(
+    Id progressId,
+    Integer attemptNumber,
+    String status
+  ) {
+    return new hfs_CourseAttempt__c(
+      hfs_CourseProgress__c = progressId,
+      hfs_AttemptNumber__c = attemptNumber,
+      hfs_Status__c = status,
+      hfs_StartedDate__c = Datetime.now(),
+      hfs_PercentComplete__c = (status == 'Completed') ? 100 : 40,
+      hfs_CompletionDate__c = (status == 'Completed') ? Date.today() : null,
+      hfs_CertificateUrl__c = (status == 'Completed')
+        ? 'https://example.com/cert/' + attemptNumber
         : null
     );
   }

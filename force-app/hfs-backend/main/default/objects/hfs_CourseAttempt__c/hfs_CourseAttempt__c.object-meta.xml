@@ -143,23 +143,25 @@
     <allowInChatterGroups>false</allowInChatterGroups>
     <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
     <deploymentStatus>Deployed</deploymentStatus>
+    <description
+  >One record per attempt at a course by a user - the durable, fully-reportable training history home (HFS-34). A Retake creates a new attempt row; nothing is ever overwritten or deleted.</description>
     <enableActivities>false</enableActivities>
     <enableBulkApi>true</enableBulkApi>
     <enableFeeds>false</enableFeeds>
     <enableHistory>false</enableHistory>
     <enableLicensing>false</enableLicensing>
-    <enableReports>false</enableReports>
+    <enableReports>true</enableReports>
     <enableSearch>true</enableSearch>
     <enableSharing>true</enableSharing>
     <enableStreamingApi>true</enableStreamingApi>
     <externalSharingModel>ControlledByParent</externalSharingModel>
-    <label>Course Progress</label>
+    <label>Course Attempt</label>
     <nameField>
-        <displayFormat>CP-{0000}</displayFormat>
-        <label>Course Progress Number</label>
+        <displayFormat>ATT-{000000}</displayFormat>
+        <label>Attempt Number</label>
         <type>AutoNumber</type>
     </nameField>
-    <pluralLabel>Course Progress</pluralLabel>
+    <pluralLabel>Course Attempts</pluralLabel>
     <searchLayouts />
     <sharingModel>ControlledByParent</sharingModel>
     <visibility>Public</visibility>

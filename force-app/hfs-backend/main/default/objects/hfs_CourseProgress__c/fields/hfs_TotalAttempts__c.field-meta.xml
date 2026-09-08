@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>hfs_TotalAttempts__c</fullName>
+    <description
+  >Count of all attempts for this user+course; reportable at-a-glance. Driven by the Master-Detail from hfs_CourseAttempt__c.</description>
+    <label>Total Attempts</label>
+    <summaryForeignKey
+  >hfs_CourseAttempt__c.hfs_CourseProgress__c</summaryForeignKey>
+    <summaryOperation>count</summaryOperation>
+    <trackTrending>false</trackTrending>
+    <type>Summary</type>
+</CustomField>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>hfs_ContentUrl__c</fullName>
+    <description
+  >The Salesforce-hosted course content location that Start/Resume opens. When blank or unreachable, the action fails closed with a retry message rather than advancing status. Populated per course by admins (course authoring is out of scope).</description>
+    <label>Content URL</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Url</type>
+</CustomField>

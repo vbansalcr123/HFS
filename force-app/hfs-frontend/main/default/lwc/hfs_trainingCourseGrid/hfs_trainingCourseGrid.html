@@ -1,10 +1,12 @@
 <template>
   <template lwc:if={hasCourses}>
     <div class="hfs-course-grid">
-      <template for:each={courses} for:item="course">
+      <template for:each={displayCourses} for:item="item">
         <c-hfs_training-course-card
-          key={course.id}
-          course={course}
+          key={item.course.id}
+          course={item.course}
+          busy-action={item.busyAction}
+          retry-message={item.retryMessage}
         ></c-hfs_training-course-card>
       </template>
     </div>

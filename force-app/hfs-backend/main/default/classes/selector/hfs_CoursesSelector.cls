@@ -1,6 +1,7 @@
 /**
- * @description Selector for hfs_Course__c built on fflib_SObjectSelector. Centralises the field
- * list and the active-courses query. Runs in USER_MODE so CRUD/FLS are enforced at query time.
+ * @description Selector for hfs_Course__c built on fflib_SObjectSelector. Runs in USER_MODE so
+ * CRUD/FLS are enforced at query time. HFS-34 adds hfs_ContentUrl__c and hfs_IsActive__c to the
+ * field list (for the launch / active-course guard checks) and a single-course lookup.
  */
 public inherited sharing virtual class hfs_CoursesSelector extends fflib_SObjectSelector {
   /**
@@ -33,26 +34,46 @@ public inherited sharing virtual class hfs_CoursesSelector extends fflib_SObject
       hfs_Course__c.hfs_ModuleCount__c,
       hfs_Course__c.hfs_DueDate__c,
       hfs_Course__c.hfs_IsNewRelease__c,
-      hfs_Course__c.hfs_ReleasedDate__c
+      hfs_Course__c.hfs_ReleasedDate__c,
+      hfs_Course__c.hfs_IsActive__c,
+      hfs_Course__c.hfs_ContentUrl__c
     };
   }
 
   /**
-   * @description Default ordering for course lists.
-   * @return the ORDER BY clause (without the ORDER BY keyword)
+   * @description Default sort order for course lists.
+   * @return the order-by clause
    */
-  public virtual override String getOrderBy() {
+  public override String getOrderBy() {
     return 'hfs_Category__c, Name';
   }
 
   /**
-   * @description Returns all active courses ordered by category then name. Retired courses drop
-   * out on the next load.
-   * @return the active course records
+   * @description Returns only the active courses in the catalog.
+   * @return the active courses
    */
   public virtual List<hfs_Course__c> selectActiveCourses() {
     return (List<hfs_Course__c>) Database.query(
       newQueryFactory().setCondition('hfs_IsActive__c = true').toSOQL()
+    );
+  }
+
+  /**
+   * @description Returns the single course for the supplied Id (used by the action guard to read
+   * hfs_IsActive__c / hfs_ContentUrl__c before Start / Resume), or an empty list when none exists.
+   * @param courseId the course Id
+   * @return the course (list of at most one)
+   */
+  public virtual List<hfs_Course__c> selectById(Id courseId) {
+    String soql = newQueryFactory()
+      .setEnforceFLS(fflib_QueryFactory.FLSEnforcement.NONE)
+      .setCondition('Id = :courseId')
+      .setLimit(1)
+      .toSOQL();
+    return (List<hfs_Course__c>) Database.queryWithBinds(
+      soql,
+      new Map<String, Object>{ 'courseId' => courseId },
+      AccessLevel.USER_MODE
     );
   }
 }
