@@ -17,7 +17,9 @@ public class hfs_Application {
       Account.SObjectType,
       Contact.SObjectType,
       User.SObjectType,
-      PermissionSetAssignment.SObjectType
+      PermissionSetAssignment.SObjectType,
+      hfs_CourseProgress__c.SObjectType,
+      hfs_CourseAttempt__c.SObjectType
     }
   );
 
@@ -59,18 +61,6 @@ public class hfs_Application {
       hfs_CourseProgress__c.SObjectType => hfs_CourseProgressDomain.Constructor.class,
       hfs_CourseAttempt__c.SObjectType => hfs_CourseAttemptDomain.Constructor.class,
       Contact.SObjectType => hfs_ContactsDomain.Constructor.class
-    }
-  );
-
-  /**
-   * @description Unit of Work factory - single, project-wide factory registered once with the
-   * commit order across the objects the write layer persists. Parent progress commits before its
-   * child attempt so the Master-Detail relationship resolves in one transaction (HFS-34).
-   */
-  public static final UnitOfWorkFactory UnitOfWork = new UnitOfWorkFactory(
-    new List<SObjectType>{
-      hfs_CourseProgress__c.SObjectType,
-      hfs_CourseAttempt__c.SObjectType
     }
   );
 
