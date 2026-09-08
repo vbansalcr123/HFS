@@ -1,0 +1,182 @@
+<template>
+    <header class="hfs-header">
+        <div class="hfs-header__bar">
+            <!-- 1. Brand identity -->
+            <a
+                href="#"
+                class="hfs-header__brand"
+                onclick={handleBrandClick}
+                aria-label={labels.brandLogoAlt}
+            >
+                <template lwc:if={hasLogo}>
+                    <img
+                        src={logoAssetUrl}
+                        alt={labels.brandLogoAlt}
+                        class="hfs-header__logo"
+                    />
+                </template>
+                <template lwc:else>
+                    <span class="hfs-header__logo-mark" aria-hidden="true">
+                        <lightning-icon
+                            icon-name="utility:socialshare"
+                            size="small"
+                            variant="inverse"
+                        ></lightning-icon>
+                    </span>
+                </template>
+                <span class="hfs-header__wordmark">
+                    <span class="hfs-header__wordmark-name">{labels.brandName}</span>
+                    <span class="hfs-header__wordmark-tagline">{labels.brandTagline}</span>
+                </span>
+            </a>
+
+            <!-- 2. Primary navigation -->
+            <div class="hfs-header__nav">
+                <c-hfs_global-nav
+                    navigation-link-set-developer-name={navigationLinkSetDeveloperName}
+                ></c-hfs_global-nav>
+            </div>
+
+            <!-- 3. Utilities (search, language, alerts, account) -->
+            <div class="hfs-header__utils">
+                <div class="hfs-header__search">
+                    <lightning-icon
+                        icon-name="utility:search"
+                        size="x-small"
+                        variant="inverse"
+                        class="hfs-header__search-icon"
+                        alternative-text={labels.searchLabel}
+                    ></lightning-icon>
+                    <input
+                        type="search"
+                        class="hfs-header__search-input"
+                        placeholder={labels.searchPlaceholder}
+                        aria-label={labels.searchLabel}
+                        value={searchTerm}
+                        onchange={handleSearchChange}
+                        onkeyup={handleSearchSubmit}
+                    />
+                </div>
+
+                <button
+                    type="button"
+                    class="hfs-header__lang"
+                    aria-label={labels.languageAria}
+                    title={labels.languageAria}
+                >
+                    <lightning-icon
+                        icon-name="utility:world"
+                        size="x-small"
+                        variant="inverse"
+                    ></lightning-icon>
+                    <span class="hfs-header__lang-label">{labels.languageLabel}</span>
+                </button>
+
+                <!-- Guest eyebrow -->
+                <template lwc:if={isGuest}>
+                    <a
+                        href="#"
+                        class="hfs-header__eyebrow-link"
+                        onclick={handleLoginClick}
+                    >{labels.login}</a>
+                    <a
+                        href="#"
+                        class="hfs-header__eyebrow-link hfs-header__eyebrow-link--cta"
+                        onclick={handleRegisterClick}
+                    >{labels.register}</a>
+                </template>
+
+                <!-- Signed-in eyebrow -->
+                <template lwc:else>
+                    <button
+                        type="button"
+                        class="hfs-header__util-btn"
+                        aria-label={labels.myToolbox}
+                        title={labels.myToolbox}
+                        onclick={handleToolboxClick}
+                    >
+                        <lightning-icon
+                            icon-name="utility:apps"
+                            size="x-small"
+                            variant="inverse"
+                        ></lightning-icon>
+                    </button>
+                    <button
+                        type="button"
+                        class="hfs-header__util-btn"
+                        aria-label={labels.cart}
+                        title={labels.cart}
+                        onclick={handleCartClick}
+                    >
+                        <lightning-icon
+                            icon-name="utility:cart"
+                            size="x-small"
+                            variant="inverse"
+                        ></lightning-icon>
+                    </button>
+                    <span class="hfs-header__util-btn hfs-header__alerts">
+                        <c-hfs_alerts-badge></c-hfs_alerts-badge>
+                    </span>
+                    <div class="hfs-header__account-wrap">
+                        <button
+                            type="button"
+                            class="hfs-header__account"
+                            aria-label={labels.account}
+                            title={labels.profile}
+                            aria-haspopup="menu"
+                            aria-expanded={accountMenuExpanded}
+                            onclick={handleAccountClick}
+                        >
+                            <lightning-icon
+                                icon-name="utility:user"
+                                size="small"
+                                variant="inverse"
+                            ></lightning-icon>
+                        </button>
+                        <template lwc:if={accountMenuOpen}>
+                            <div class={accountMenuClass} role="menu" aria-label={labels.account}>
+                                <a
+                                    href="#"
+                                    role="menuitem"
+                                    class="hfs-header__account-item"
+                                    onclick={handleProfileSelect}
+                                >
+                                    <lightning-icon icon-name="utility:user" size="x-small" class="hfs-header__account-item-icon"></lightning-icon>
+                                    <span>{labels.myProfile}</span>
+                                </a>
+                                <a
+                                    href="#"
+                                    role="menuitem"
+                                    class="hfs-header__account-item"
+                                    onclick={handleToolboxSelect}
+                                >
+                                    <lightning-icon icon-name="utility:apps" size="x-small" class="hfs-header__account-item-icon"></lightning-icon>
+                                    <span>{labels.myToolbox}</span>
+                                </a>
+                                <a
+                                    href="#"
+                                    role="menuitem"
+                                    class="hfs-header__account-item"
+                                    onclick={handleSettingsSelect}
+                                >
+                                    <lightning-icon icon-name="utility:settings" size="x-small" class="hfs-header__account-item-icon"></lightning-icon>
+                                    <span>{labels.settings}</span>
+                                </a>
+                                <div class="hfs-header__account-divider" role="separator"></div>
+                                <a
+                                    href="#"
+                                    role="menuitem"
+                                    class="hfs-header__account-item"
+                                    onclick={handleLogoutSelect}
+                                >
+                                    <lightning-icon icon-name="utility:logout" size="x-small" class="hfs-header__account-item-icon"></lightning-icon>
+                                    <span>{labels.logout}</span>
+                                </a>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </header>
+</template>

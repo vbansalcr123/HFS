@@ -1,0 +1,246 @@
+:host {
+    display: block;
+    width: 100%;
+}
+
+.hfs-header {
+    background-color: #12283f;
+    color: #ffffff;
+    font-family: 'Public Sans', system-ui, sans-serif;
+    width: 100%;
+}
+
+.hfs-header__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3.25rem;
+    padding: 0 1rem;
+    max-width: 1920px;
+    margin: 0 auto;
+}
+
+/* Brand identity */
+.hfs-header__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    color: #ffffff;
+    flex: 0 0 auto;
+}
+
+.hfs-header__logo {
+    height: 2.25rem;
+    width: auto;
+    display: block;
+    background-color: #ffffff;
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.hfs-header__logo-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    background-color: #ffffff;
+    border-radius: 6px;
+}
+
+.hfs-header__wordmark {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.05;
+}
+
+.hfs-header__wordmark-name {
+    font-family: 'Barlow Condensed', 'Public Sans', sans-serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: 0.03em;
+    color: #c5112c;
+}
+
+.hfs-header__wordmark-tagline {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+/* Nav sits between brand and utilities. min-width:0 lets this flex child
+   shrink below its content width so the nav never overlaps the utilities. */
+.hfs-header__nav {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+/* Utilities never shrink into the nav, so search/alerts/account keep their
+   footprint and the nav yields space to them instead of overlapping. */
+.hfs-header__utils {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+}
+
+.hfs-header__search {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 7px;
+    padding: 0.3rem 0.6rem;
+}
+
+.hfs-header__search-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #ffffff;
+    font-size: 0.85rem;
+    width: 10rem;
+    max-width: 22vw;
+    min-width: 0;
+}
+
+.hfs-header__search-input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.hfs-header__lang,
+.hfs-header__util-btn,
+.hfs-header__account {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0.35rem;
+    border-radius: 6px;
+}
+
+.hfs-header__lang:hover,
+.hfs-header__util-btn:hover,
+.hfs-header__account:hover,
+.hfs-header__lang:focus,
+.hfs-header__util-btn:focus,
+.hfs-header__account:focus {
+    background-color: rgba(255, 255, 255, 0.12);
+    outline-offset: 2px;
+}
+
+/* Account dropdown menu (opens on user-icon click). */
+.hfs-header__account-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.hfs-header__account-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    min-width: 13rem;
+    background-color: #ffffff;
+    color: #12283f;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    padding: 0.35rem 0;
+    z-index: 1000;
+}
+
+.hfs-header__account-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1rem;
+    color: #12283f;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.hfs-header__account-item:hover,
+.hfs-header__account-item:focus {
+    background-color: #f2f4f7;
+    color: #12283f;
+    outline: none;
+}
+
+.hfs-header__account-item-icon {
+    --slds-c-icon-color-foreground-default: #5a6b7b;
+}
+
+.hfs-header__account-divider {
+    height: 1px;
+    margin: 0.35rem 0;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.hfs-header__lang-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.hfs-header__alerts {
+    background: transparent;
+}
+
+.hfs-header__eyebrow-link {
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+}
+
+.hfs-header__eyebrow-link:hover,
+.hfs-header__eyebrow-link:focus {
+    text-decoration: underline;
+    outline-offset: 2px;
+}
+
+.hfs-header__eyebrow-link--cta {
+    background-color: #c8102e;
+}
+
+.hfs-header__eyebrow-link--cta:hover,
+.hfs-header__eyebrow-link--cta:focus {
+    background-color: #a50d26;
+    text-decoration: none;
+}
+
+/* Medium viewports: free up space so the primary nav and the search box never
+   crowd each other - collapse the language text (keep the globe icon) and trim
+   the search input. */
+@media (max-width: 1200px) {
+    .hfs-header__lang-label {
+        display: none;
+    }
+
+    .hfs-header__search-input {
+        width: 8rem;
+    }
+}
+
+/* Responsive: hide the inline search input on small viewports (icon remains) */
+@media (max-width: 767px) {
+    .hfs-header__search-input {
+        display: none;
+    }
+
+    .hfs-header__wordmark-tagline {
+        display: none;
+    }
+
+    .hfs-header__nav {
+        position: static;
+    }
+}

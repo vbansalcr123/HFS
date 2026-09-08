@@ -1,0 +1,30 @@
+<template>
+    <span
+        class="hfs-alerts"
+        role="status"
+        aria-live="polite"
+        aria-busy={isBusy}
+        aria-label={ariaLabel}
+        title={ariaLabel}
+    >
+        <lightning-icon
+            icon-name="utility:notification"
+            alternative-text={labels.alerts}
+            size="x-small"
+            variant="inverse"
+            class="hfs-alerts__icon"
+        ></lightning-icon>
+
+        <template lwc:if={isLoading}>
+            <span class="hfs-alerts__skeleton" aria-hidden="true"></span>
+        </template>
+
+        <template lwc:elseif={isUnavailable}>
+            <span class="hfs-alerts__dot hfs-alerts__dot--muted" aria-hidden="true"></span>
+        </template>
+
+        <template lwc:elseif={showCountPill}>
+            <span class="hfs-alerts__pill" aria-hidden="true">{count}</span>
+        </template>
+    </span>
+</template>

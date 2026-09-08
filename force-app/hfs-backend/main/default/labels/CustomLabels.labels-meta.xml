@@ -1,132 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
     <labels>
-        <fullName>hfs_Training_PageTitle</fullName>
-        <categories>Training</categories>
+        <fullName>hfs_Alerts_Loading</fullName>
+        <categories>HFS-29 Global Header</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Training page title</shortDescription>
-        <value>Sinclair Training Library</value>
+        <shortDescription>Alerts Loading</shortDescription>
+        <value>Loading alerts</value>
     </labels>
     <labels>
-        <fullName>hfs_Training_Subtitle</fullName>
-        <categories>Training</categories>
+        <fullName>hfs_Alerts_Unavailable_Short</fullName>
+        <categories>HFS-29 Global Header</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Training page subtitle</shortDescription>
-        <value>Role-based learning for Dealer &amp; Distributor Partners</value>
+        <shortDescription>Alerts Unavailable Short</shortDescription>
+        <value>Alerts unavailable</value>
     </labels>
     <labels>
-        <fullName>hfs_Training_ProgressHeading</fullName>
-        <categories>Training</categories>
+        <fullName>hfs_Alerts_Unread_Count</fullName>
+        <categories>HFS-29 Global Header</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Progress panel heading</shortDescription>
-        <value>Your Learning Progress</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_ViewCertificates</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>View certificates action</shortDescription>
-        <value>View My Certificates</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_ResumeLastCourse</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>Resume last course action</shortDescription>
-        <value>Resume Last Course</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_AllCourses</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>All courses filter chip</shortDescription>
-        <value>All Courses</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_FirstTimeMessage</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>First-time zero state message</shortDescription>
-        <value>You have not started any courses yet. Browse the catalog below to begin.</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_EmptyStateMessage</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>Empty category state message</shortDescription>
-        <value>No courses are available in this category right now.</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_UnavailableMessage</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>Training source unavailable message</shortDescription>
-        <value>Training information is temporarily unavailable. Please try again later.</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_LoadingMessage</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>Loading state message</shortDescription>
-        <value>Loading your training…</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_StatusCompleted</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>Completed status label</shortDescription>
-        <value>Completed</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_StatusInProgress</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>In progress status label</shortDescription>
-        <value>In Progress</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_StatusNotStarted</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>Not started status label</shortDescription>
-        <value>Not Started</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Training_NewBadge</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>New release badge</shortDescription>
-        <value>NEW</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Error_Training_Load_Failed</fullName>
-        <categories>Training</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>Error message when training view cannot be built</shortDescription>
-        <value>We could not load your training information. Please try again later.</value>
-    </labels>
-    <labels>
-        <fullName>hfs_Error_Unexpected</fullName>
-        <categories>Shared</categories>
-        <language>en_US</language>
-        <protected>false</protected>
-        <shortDescription>Domain-neutral message for an unexpected system error</shortDescription>
-        <value>Something went wrong. Please try again later.</value>
+        <shortDescription>Alerts Unread Count</shortDescription>
+        <value>{0} unread alerts</value>
     </labels>
     <labels>
         <fullName>hfs_Button_Register</fullName>
@@ -153,6 +49,14 @@
         <value>An account already exists for this email or username. Please sign in or reset your password.</value>
     </labels>
     <labels>
+        <fullName>hfs_Error_Home_Dashboard_Load_Failed</fullName>
+        <categories>HFS</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Home dashboard load failed</shortDescription>
+        <value>We could not load your dashboard right now. Please try again shortly.</value>
+    </labels>
+    <labels>
         <fullName>hfs_Error_Provisioning_Failed</fullName>
         <categories>Registration</categories>
         <language>en_US</language>
@@ -161,12 +65,36 @@
         <value>We could not complete your registration right now. No account was created. Please try again.</value>
     </labels>
     <labels>
+        <fullName>hfs_Error_Training_Load_Failed</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Error message when training view cannot be built</shortDescription>
+        <value>We could not load your training information. Please try again later.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Error_Unexpected</fullName>
+        <categories>Shared</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Domain-neutral message for an unexpected system error</shortDescription>
+        <value>Something went wrong. Please try again later.</value>
+    </labels>
+    <labels>
         <fullName>hfs_Field_Company</fullName>
         <categories>Registration</categories>
         <language>en_US</language>
         <protected>false</protected>
         <shortDescription>Company name field label</shortDescription>
         <value>Company name</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Field_Confirm_Password</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Confirm password field label</shortDescription>
+        <value>Confirm password</value>
     </labels>
     <labels>
         <fullName>hfs_Field_Email</fullName>
@@ -209,6 +137,14 @@
         <value>Select type</value>
     </labels>
     <labels>
+        <fullName>hfs_Field_Password</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Password field label</shortDescription>
+        <value>Password</value>
+    </labels>
+    <labels>
         <fullName>hfs_Field_Phone</fullName>
         <categories>Registration</categories>
         <language>en_US</language>
@@ -225,100 +161,204 @@
         <value>Territory / State</value>
     </labels>
     <labels>
-        <fullName>hfs_Link_Sign_In</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Footer_Copyright</fullName>
+        <categories>HFS-29 Global Footer</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Sign in link</shortDescription>
-        <value>Already have an account? Sign in</value>
+        <shortDescription>Footer Copyright</shortDescription>
+        <value>© HF Sinclair Corporation. All rights reserved.</value>
     </labels>
     <labels>
-        <fullName>hfs_Msg_Check_Email</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Footer_Heading</fullName>
+        <categories>HFS-29 Global Footer</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Check your email message</shortDescription>
-        <value>Check your email — we have sent you a link to set your password and activate your account.</value>
+        <shortDescription>Footer Heading</shortDescription>
+        <value>Sinclair Brand Portal</value>
     </labels>
     <labels>
-        <fullName>hfs_Msg_Generic_Error</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Footer_Legal_DoNotSell</fullName>
+        <categories>HFS-29 Global Footer</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Generic error message</shortDescription>
-        <value>Something went wrong. Please try again in a moment.</value>
+        <shortDescription>Footer Legal Do Not Sell</shortDescription>
+        <value>Do Not Sell My Information</value>
     </labels>
     <labels>
-        <fullName>hfs_Msg_Invalid_Email</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Footer_Legal_Heading</fullName>
+        <categories>HFS-29 Global Footer</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Invalid email message</shortDescription>
-        <value>Please enter a valid email address.</value>
+        <shortDescription>Footer Legal Heading</shortDescription>
+        <value>Legal</value>
     </labels>
     <labels>
-        <fullName>hfs_Msg_Required_Fields</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Footer_Legal_Privacy</fullName>
+        <categories>HFS-29 Global Footer</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Required fields message</shortDescription>
-        <value>Please complete all required fields.</value>
+        <shortDescription>Footer Legal Privacy</shortDescription>
+        <value>Privacy Policy</value>
     </labels>
     <labels>
-        <fullName>hfs_Partner_Type_Dealer</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Footer_Legal_Terms</fullName>
+        <categories>HFS-29 Global Footer</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Partner type option: Dealer</shortDescription>
-        <value>Dealer</value>
+        <shortDescription>Footer Legal Terms</shortDescription>
+        <value>Terms of Use</value>
     </labels>
     <labels>
-        <fullName>hfs_Partner_Type_Distributor</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Footer_Sibling_Heading</fullName>
+        <categories>HFS-29 Global Footer</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Partner type option: Jobber / distributor</shortDescription>
-        <value>Jobber / distributor</value>
+        <shortDescription>Footer Sibling Heading</shortDescription>
+        <value>Sinclair Portals</value>
     </labels>
     <labels>
-        <fullName>hfs_Register_Hero_Body</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Header_Account</fullName>
+        <categories>HFS-29 Global Header</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Register hero body</shortDescription>
-        <value>Everything Dealers, Distributors and Unbranded Dealers need — brand assets, requests and training — in one place.</value>
+        <shortDescription>Header Account</shortDescription>
+        <value>Account</value>
     </labels>
     <labels>
-        <fullName>hfs_Register_Hero_Title</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Header_Alerts</fullName>
+        <categories>HFS-29 Global Header</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Register hero title</shortDescription>
-        <value>Welcome to the Sinclair Partner Portal</value>
+        <shortDescription>Header Alerts</shortDescription>
+        <value>Alerts</value>
     </labels>
     <labels>
-        <fullName>hfs_Register_Subtitle</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Header_Alerts_Unavailable</fullName>
+        <categories>HFS-29 Global Header</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Register page subtitle</shortDescription>
-        <value>Create your Sinclair Partner Portal account. We will email you a link to set your password and finish setting up.</value>
+        <shortDescription>Header Alerts Unavailable</shortDescription>
+        <value>Alerts are unavailable right now. Please try again later.</value>
     </labels>
     <labels>
-        <fullName>hfs_Register_Title</fullName>
-        <categories>Registration</categories>
+        <fullName>hfs_Header_Brand_Logo_Alt</fullName>
+        <categories>HFS-29 Global Header</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Register page title</shortDescription>
-        <value>Request portal access</value>
+        <shortDescription>Header Brand Logo Alt</shortDescription>
+        <value>Sinclair Brand Portal home</value>
     </labels>
     <labels>
-        <fullName>hfs_Error_Home_Dashboard_Load_Failed</fullName>
-        <categories>HFS</categories>
+        <fullName>hfs_Header_Brand_Name</fullName>
+        <categories>HFS-29 Global Header</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Home dashboard load failed</shortDescription>
-        <value>We could not load your dashboard right now. Please try again shortly.</value>
+        <shortDescription>Header Brand Name</shortDescription>
+        <value>SINCLAIR</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Brand_Tagline</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Brand Tagline</shortDescription>
+        <value>Brand Portal</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Cart</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Cart</shortDescription>
+        <value>Cart</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Language_Aria</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Language Aria</shortDescription>
+        <value>Change language (English)</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Language_Label</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Language Label</shortDescription>
+        <value>EN</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Login</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Login</shortDescription>
+        <value>Login</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Logout</fullName>
+        <categories>HFS-28 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Account Menu Logout</shortDescription>
+        <value>Log Out</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Menu_Toggle</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Menu Toggle</shortDescription>
+        <value>Toggle navigation menu</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_My_Toolbox</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header My Toolbox</shortDescription>
+        <value>My Toolbox</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Profile</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Profile</shortDescription>
+        <value>Profile</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Register</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Register</shortDescription>
+        <value>Register</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Search_Label</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Search Label</shortDescription>
+        <value>Search the portal</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Search_Placeholder</fullName>
+        <categories>HFS-29 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Search Placeholder</shortDescription>
+        <value>Search the portal...</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Header_Settings</fullName>
+        <categories>HFS-28 Global Header</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Header Account Menu Settings</shortDescription>
+        <value>Settings</value>
     </labels>
     <labels>
         <fullName>hfs_HomeDashboard_AccountNumberPrefix</fullName>
@@ -401,20 +441,36 @@
         <value>Unavailable</value>
     </labels>
     <labels>
-        <fullName>hfs_Field_Confirm_Password</fullName>
+        <fullName>hfs_Link_Sign_In</fullName>
         <categories>Registration</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Confirm password field label</shortDescription>
-        <value>Confirm password</value>
+        <shortDescription>Sign in link</shortDescription>
+        <value>Already have an account? Sign in</value>
     </labels>
     <labels>
-        <fullName>hfs_Field_Password</fullName>
+        <fullName>hfs_Msg_Check_Email</fullName>
         <categories>Registration</categories>
         <language>en_US</language>
         <protected>false</protected>
-        <shortDescription>Password field label</shortDescription>
-        <value>Password</value>
+        <shortDescription>Check your email message</shortDescription>
+        <value>Check your email — we have sent you a link to set your password and activate your account.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Msg_Generic_Error</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Generic error message</shortDescription>
+        <value>Something went wrong. Please try again in a moment.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Msg_Invalid_Email</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Invalid email message</shortDescription>
+        <value>Please enter a valid email address.</value>
     </labels>
     <labels>
         <fullName>hfs_Msg_Password_Mismatch</fullName>
@@ -423,5 +479,173 @@
         <protected>false</protected>
         <shortDescription>Password mismatch message</shortDescription>
         <value>The passwords you entered do not match.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Msg_Required_Fields</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Required fields message</shortDescription>
+        <value>Please complete all required fields.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Partner_Type_Dealer</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Partner type option: Dealer</shortDescription>
+        <value>Dealer</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Partner_Type_Distributor</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Partner type option: Jobber / distributor</shortDescription>
+        <value>Jobber / distributor</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Register_Hero_Body</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Register hero body</shortDescription>
+        <value>Everything Dealers, Distributors and Unbranded Dealers need — brand assets, requests and training — in one place.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Register_Hero_Title</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Register hero title</shortDescription>
+        <value>Welcome to the Sinclair Partner Portal</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Register_Subtitle</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Register page subtitle</shortDescription>
+        <value>Create your Sinclair Partner Portal account. We will email you a link to set your password and finish setting up.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Register_Title</fullName>
+        <categories>Registration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Register page title</shortDescription>
+        <value>Request portal access</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_AllCourses</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>All courses filter chip</shortDescription>
+        <value>All Courses</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_EmptyStateMessage</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Empty category state message</shortDescription>
+        <value>No courses are available in this category right now.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_FirstTimeMessage</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>First-time zero state message</shortDescription>
+        <value>You have not started any courses yet. Browse the catalog below to begin.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_LoadingMessage</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Loading state message</shortDescription>
+        <value>Loading your training…</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_NewBadge</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>New release badge</shortDescription>
+        <value>NEW</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_PageTitle</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Training page title</shortDescription>
+        <value>Sinclair Training Library</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_ProgressHeading</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Progress panel heading</shortDescription>
+        <value>Your Learning Progress</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_ResumeLastCourse</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Resume last course action</shortDescription>
+        <value>Resume Last Course</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_StatusCompleted</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Completed status label</shortDescription>
+        <value>Completed</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_StatusInProgress</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>In progress status label</shortDescription>
+        <value>In Progress</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_StatusNotStarted</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Not started status label</shortDescription>
+        <value>Not Started</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_Subtitle</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Training page subtitle</shortDescription>
+        <value>Role-based learning for Dealer &amp; Distributor Partners</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_UnavailableMessage</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Training source unavailable message</shortDescription>
+        <value>Training information is temporarily unavailable. Please try again later.</value>
+    </labels>
+    <labels>
+        <fullName>hfs_Training_ViewCertificates</fullName>
+        <categories>Training</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>View certificates action</shortDescription>
+        <value>View My Certificates</value>
     </labels>
 </CustomLabels>

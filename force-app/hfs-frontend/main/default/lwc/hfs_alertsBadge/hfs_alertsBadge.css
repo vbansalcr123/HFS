@@ -1,0 +1,62 @@
+.hfs-alerts {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.75rem;
+    height: 1.75rem;
+}
+
+.hfs-alerts__icon {
+    --slds-c-icon-color-foreground-default: #ffffff;
+}
+
+/* COUNT: red pill with the user's own unread count. */
+.hfs-alerts__pill {
+    position: absolute;
+    top: -0.25rem;
+    right: -0.35rem;
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 0.25rem;
+    border-radius: 0.5rem;
+    background-color: #c8102e;
+    color: #ffffff;
+    font-size: 0.65rem;
+    line-height: 1rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+/* LOADING: subtle pulsing skeleton dot; never a stale/zero number. */
+.hfs-alerts__skeleton {
+    position: absolute;
+    top: -0.15rem;
+    right: -0.25rem;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.55);
+    animation: hfs-alerts-pulse 1.2s ease-in-out infinite;
+}
+
+/* UNAVAILABLE: dimmed dot, no number, never another user's count. */
+.hfs-alerts__dot--muted {
+    position: absolute;
+    top: -0.15rem;
+    right: -0.25rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes hfs-alerts-pulse {
+    0%,
+    100% {
+        opacity: 0.4;
+    }
+    50% {
+        opacity: 1;
+    }
+}

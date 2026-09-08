@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>64.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Global Header</masterLabel>
+    <description>Persistent global header (brand identity, primary navigation, and eyebrow utilities) for the Sinclair Brand Portal chrome. Rendered once into the site theme layout header region so it appears identically on every page.</description>
+    <targets>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightningCommunity__Default">
+            <property
+                name="logoAssetUrl"
+                type="String"
+                label="Logo Asset URL"
+                description="ContentAsset URL for the Sinclair logo. Leave empty to render the SINCLAIR / Brand Portal text lockup."
+            />
+            <property
+                name="searchRouteName"
+                type="String"
+                label="Search Route Name"
+                description="Named LWR route for the portal search entry point (results are a separate story)."
+                default="Search__c"
+            />
+            <property
+                name="profileRouteName"
+                type="String"
+                label="Profile Route Name"
+                description="Named LWR route for the account/profile entry point."
+                default="my-profile"
+            />
+            <property
+                name="cartRouteName"
+                type="String"
+                label="Cart Route Name"
+                description="Named LWR route for the cart entry point (cart backing is out of scope)."
+                default="Cart__c"
+            />
+            <property
+                name="navigationLinkSetDeveloperName"
+                type="String"
+                label="Navigation Menu Developer Name"
+                description="Developer name of the NavigationLinkSet rendered by the embedded navigation."
+                default="hfs_Dry_Run_Primary"
+            />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

@@ -1,0 +1,104 @@
+.hfs-nav {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    width: 100%;
+}
+
+.hfs-nav__list {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    min-width: 0;
+    flex-wrap: nowrap;
+}
+
+.hfs-nav__item {
+    display: flex;
+    flex: 0 0 auto;
+}
+
+.hfs-nav__link {
+    display: inline-flex;
+    align-items: center;
+    height: 3.25rem;
+    padding: 0 0.6rem;
+    color: #ffffff !important;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+}
+
+.hfs-nav__link:hover,
+.hfs-nav__link:focus {
+    color: #ffffff !important;
+    outline-offset: 2px;
+}
+
+.hfs-nav__link--active {
+    color: #ffffff !important;
+    border-bottom-color: #c8102e;
+}
+
+/* Items whose target page does not exist yet: rendered for layout parity but
+   inert. Dimmed and non-interactive so users are not sent to an invalid page. */
+.hfs-nav__link--disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.hfs-nav__link--disabled:hover,
+.hfs-nav__link--disabled:focus {
+    opacity: 0.55;
+}
+
+/* Mobile toggle hidden on desktop. */
+.hfs-nav__toggle {
+    display: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+@media (max-width: 767px) {
+    .hfs-nav__toggle {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .hfs-nav__list {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        background-color: #12283f;
+        padding: 0.25rem 0;
+        z-index: 20;
+    }
+
+    .hfs-nav__list--open {
+        display: flex;
+    }
+
+    .hfs-nav__link {
+        height: auto;
+        padding: 0.75rem 1.25rem;
+        border-bottom: none;
+        border-left: 3px solid transparent;
+    }
+
+    .hfs-nav__link--active {
+        border-left-color: #c8102e;
+        background-color: rgba(255, 255, 255, 0.06);
+    }
+}
