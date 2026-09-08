@@ -25,9 +25,9 @@
     <referrerPolicyOriginWhenCrossOrigin
   >true</referrerPolicyOriginWhenCrossOrigin>
     <selfRegPage>CommunitiesSelfReg</selfRegPage>
-    <siteAdmin>test-st7kufsu2pb7@example.com</siteAdmin>
+    <siteAdmin>__TARGET_USERNAME__</siteAdmin>
     <siteGuestRecordDefaultOwner
-  >test-st7kufsu2pb7@example.com</siteGuestRecordDefaultOwner>
+  >__TARGET_USERNAME__</siteGuestRecordDefaultOwner>
     <siteType>ChatterNetwork</siteType>
     <urlPathPrefix>dryrunvforcesite</urlPathPrefix>
 </CustomSite>
