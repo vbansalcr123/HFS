@@ -12,6 +12,9 @@ public class hfs_Constants {
   /** An unexpected, non-business system error occurred. Domain-neutral fallback. */
   public static final String UNEXPECTED_ERROR = 'UNEXPECTED_ERROR';
 
+  /** Alias of UNEXPECTED_ERROR for call sites written against the shorter name. */
+  public static final String UNEXPECTED = 'UNEXPECTED_ERROR';
+
   // ----------------------------------------------------------------------
   // Error codes - Training domain
   // ----------------------------------------------------------------------

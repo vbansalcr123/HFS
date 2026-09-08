@@ -39,6 +39,22 @@ public inherited sharing class hfs_UsersSelector extends fflib_SObjectSelector {
     }
 
     /**
+     * @description Generic, injection-safe query over User, for callers that need
+     * an arbitrary field list / WHERE clause rather than the fixed selector fields.
+     * @param whereClause SOQL WHERE body (no leading WHERE), using named binds
+     * @param bindMap bind variable map
+     * @param fieldsToGet fields to select
+     * @return matching User records
+     */
+    public List<User> getUsersRecords(String whereClause, Map<String, Object> bindMap, List<String> fieldsToGet) {
+        String soql = 'SELECT ' + String.join(fieldsToGet, ', ') + ' FROM User';
+        if (String.isNotBlank(whereClause)) {
+            soql += ' WHERE ' + whereClause;
+        }
+        return Database.queryWithBinds(soql, bindMap, AccessLevel.SYSTEM_MODE);
+    }
+
+    /**
      * @description Resolves a Profile Id by name in system mode (guest context).
      * @param profileName the profile name
      * @return the Profile Id, or null when not found
@@ -48,6 +64,16 @@ public inherited sharing class hfs_UsersSelector extends fflib_SObjectSelector {
             SELECT Id FROM Profile WHERE Name = :profileName WITH SYSTEM_MODE LIMIT 1
         ];
         return profiles.isEmpty() ? null : profiles[0].Id;
+    }
+
+    /**
+     * @description Alias of selectProfileIdByName for call sites written against
+     * the shorter, non-fflib-style name.
+     * @param profileName the profile name
+     * @return the Profile Id, or null when not found
+     */
+    public Id getProfileIdByName(String profileName) {
+        return selectProfileIdByName(profileName);
     }
 
     /**
@@ -68,5 +94,27 @@ public inherited sharing class hfs_UsersSelector extends fflib_SObjectSelector {
             LIMIT 1
         ];
         return owners.isEmpty() ? null : owners[0].Id;
+    }
+
+    /**
+     * @description Resolves the active internal owner for the portal Account by
+     * username in system mode (guest context), including its UserRoleId. The
+     * caller validates the role: Salesforce requires the owner of a portal
+     * (community) account to hold a UserRole before a portal User can be created
+     * under it.
+     * @param username the User.Username to resolve
+     * @return the matching active User (Id + UserRoleId), or null when not found
+     */
+    public User getPortalAccountOwner(String username) {
+        if (String.isBlank(username)) {
+            return null;
+        }
+        List<User> owners = [
+            SELECT Id, UserRoleId FROM User
+            WHERE Username = :username AND IsActive = true
+            WITH SYSTEM_MODE
+            LIMIT 1
+        ];
+        return owners.isEmpty() ? null : owners[0];
     }
 }

@@ -33,4 +33,14 @@ public inherited sharing class hfs_PermissionSetsSelector extends fflib_SObjectS
         ];
         return sets.isEmpty() ? null : sets[0].Id;
     }
+
+    /**
+     * @description Alias of selectIdByName for call sites written against the
+     * shorter, non-fflib-style name.
+     * @param apiName the permission set Name (API name)
+     * @return the PermissionSet Id, or null when not found
+     */
+    public Id getPermissionSetIdByName(String apiName) {
+        return selectIdByName(apiName);
+    }
 }
