@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>64.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Global Navigation</masterLabel>
+    <description>Primary site navigation for the Sinclair Brand Portal chrome. Renders the configurable primary menu items, marks the active section (aria-current + red indicator), and collapses to a menu button on small viewports.</description>
+    <targets>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightningCommunity__Default">
+            <property
+                name="navigationLinkSetDeveloperName"
+                type="String"
+                label="Navigation Menu Developer Name"
+                description="Developer name of the NavigationLinkSet to render (e.g. hfs_Dry_Run_Primary). Reserved for future audience-driven menu rendering."
+                default="hfs_Dry_Run_Primary"
+            />
+            <property
+                name="menuItemsJson"
+                type="String"
+                label="Menu Items (JSON)"
+                description="Optional JSON array of {label, routeName} overriding the default primary set. Leave empty to use the representative primary items."
+            />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

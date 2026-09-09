@@ -14,6 +14,7 @@
             "backgroundImageConfig" : "",
             "backgroundImageOverlay" : "rgba(0,0,0,0)",
             "componentSpacerSize" : "",
+            "dxpStyle" : { },
             "layoutDirectionDesktop" : "row",
             "layoutDirectionMobile" : "column",
             "layoutDirectionTablet" : "column",
@@ -24,6 +25,14 @@
             "sectionVerticalAlign" : "flex-start"
           },
           "children" : [ {
+            "children" : [ {
+              "attributes" : {
+                "dxpStyle" : { }
+              },
+              "definition" : "c:hfs_globalHeader",
+              "id" : "54d52994-45fe-4154-b09d-896e23c8722d",
+              "type" : "component"
+            } ],
             "id" : "76bb675b-5a8e-416c-95bd-5ea5589b297c",
             "name" : "headerSection",
             "title" : "Theme Header",
@@ -43,6 +52,7 @@
             "backgroundImageConfig" : "",
             "backgroundImageOverlay" : "rgba(0,0,0,0)",
             "componentSpacerSize" : "",
+            "dxpStyle" : { },
             "layoutDirectionDesktop" : "row",
             "layoutDirectionMobile" : "column",
             "layoutDirectionTablet" : "column",
@@ -53,6 +63,14 @@
             "sectionVerticalAlign" : "flex-start"
           },
           "children" : [ {
+            "children" : [ {
+              "attributes" : {
+                "dxpStyle" : { }
+              },
+              "definition" : "c:hfs_globalFooter",
+              "id" : "253ded24-e064-43ff-ba00-2cdf34de0155",
+              "type" : "component"
+            } ],
             "id" : "7b2c7a15-d5de-4423-a6f2-1779584563be",
             "name" : "footerSection",
             "title" : "Theme Footer",

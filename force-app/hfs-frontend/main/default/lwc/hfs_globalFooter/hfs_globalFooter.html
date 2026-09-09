@@ -1,0 +1,37 @@
+<template>
+    <footer class="hfs-footer" aria-label="Site footer">
+        <div class="hfs-footer__inner">
+            <div class="hfs-footer__brand">
+                <span class="hfs-footer__heading">{labels.heading}</span>
+            </div>
+
+            <template lwc:if={hasSiblingLinks}>
+                <nav class="hfs-footer__col" aria-label={labels.siblingHeading}>
+                    <span class="hfs-footer__col-heading">{labels.siblingHeading}</span>
+                    <ul class="hfs-footer__list">
+                        <template for:each={siblingLinks} for:item="link">
+                            <li key={link.key} class="hfs-footer__item">
+                                <a class="hfs-footer__link" href={link.url}>{link.label}</a>
+                            </li>
+                        </template>
+                    </ul>
+                </nav>
+            </template>
+
+            <nav class="hfs-footer__col" aria-label={labels.legalHeading}>
+                <span class="hfs-footer__col-heading">{labels.legalHeading}</span>
+                <ul class="hfs-footer__list">
+                    <template for:each={legalLinks} for:item="link">
+                        <li key={link.key} class="hfs-footer__item">
+                            <a class="hfs-footer__link" href={link.url}>{link.label}</a>
+                        </li>
+                    </template>
+                </ul>
+            </nav>
+        </div>
+
+        <div class="hfs-footer__legalbar">
+            <span class="hfs-footer__copyright">{labels.copyright}</span>
+        </div>
+    </footer>
+</template>

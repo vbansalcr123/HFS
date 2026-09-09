@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>64.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Global Footer</masterLabel>
+    <description>Persistent global footer with sibling-portal and legal links (including Do Not Sell My Information) for the Sinclair Brand Portal chrome. Rendered once into the site theme layout footer region.</description>
+    <targets>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightningCommunity__Default">
+            <property
+                name="legalLinksJson"
+                type="String"
+                label="Legal Links (JSON)"
+                description="Optional JSON array of {label, url} for legal links. Leave empty to use Privacy Policy, Terms of Use and Do Not Sell My Information."
+            />
+            <property
+                name="siblingLinksJson"
+                type="String"
+                label="Sibling Portal Links (JSON)"
+                description="Optional JSON array of {label, url} for sibling-portal links. Leave empty to ship legal links only until the exact links are supplied."
+            />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

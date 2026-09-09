@@ -45,7 +45,8 @@ public class hfs_Application {
       hfs_TrainingService.class => hfs_TrainingServiceImpl.class,
       hfs_ToolboxService.class => hfs_ToolboxServiceImpl.class,
       hfs_RegistrationService.class => hfs_RegistrationServiceImpl.class,
-      hfs_HomeDashboardService.class => hfs_HomeDashboardServiceImpl.class
+      hfs_HomeDashboardService.class => hfs_HomeDashboardServiceImpl.class,
+      hfs_AlertsService.class => hfs_AlertsServiceImpl.class
     }
   );
 

@@ -1,0 +1,36 @@
+<template>
+    <nav class="hfs-nav" aria-label="Primary">
+        <button
+            class="hfs-nav__toggle"
+            type="button"
+            aria-expanded={mobileExpanded}
+            title={labels.menuToggle}
+            onclick={toggleMobileMenu}
+        >
+            <lightning-icon
+                icon-name="utility:rows"
+                alternative-text={labels.menuToggle}
+                size="small"
+                variant="inverse"
+            ></lightning-icon>
+        </button>
+
+        <ul class={navListClass} role="menubar">
+            <template for:each={computedItems} for:item="item">
+                <li key={item.key} class="hfs-nav__item" role="none">
+                    <a
+                        href="#"
+                        role="menuitem"
+                        class={item.cssClass}
+                        data-route={item.key}
+                        aria-current={item.ariaCurrent}
+                        aria-disabled={item.ariaDisabled}
+                        onclick={handleItemClick}
+                    >
+                        {item.label}
+                    </a>
+                </li>
+            </template>
+        </ul>
+    </nav>
+</template>
