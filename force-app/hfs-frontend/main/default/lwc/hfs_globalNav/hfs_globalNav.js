@@ -84,7 +84,7 @@ export default class Hfs_globalNav extends NavigationMixin(LightningElement) {
                         available: it.available !== false
                     }));
                 }
-            } catch (e) {
+            } catch {
                 // Malformed JSON -> fall back to the default representative set.
             }
         }
@@ -106,7 +106,7 @@ export default class Hfs_globalNav extends NavigationMixin(LightningElement) {
                 cssClass += ' hfs-nav__link--disabled';
             }
             return {
-                key: item.routeName,
+                key: routeName,
                 label: item.label,
                 isActive,
                 available,
@@ -115,7 +115,7 @@ export default class Hfs_globalNav extends NavigationMixin(LightningElement) {
                 cssClass,
                 pageRef: {
                     type: 'comm__namedPage',
-                    attributes: { name: item.routeName }
+                    attributes: { name: routeName }
                 }
             };
         });

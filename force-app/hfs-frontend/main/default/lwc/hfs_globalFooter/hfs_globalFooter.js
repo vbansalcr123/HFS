@@ -59,7 +59,7 @@ export default class Hfs_globalFooter extends LightningElement {
         try {
             const parsed = JSON.parse(json);
             return Array.isArray(parsed) ? parsed : null;
-        } catch (e) {
+        } catch {
             // Malformed JSON -> fall back to defaults / empty.
             return null;
         }
